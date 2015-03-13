@@ -39,6 +39,8 @@ class Tree(MutableMapping):
         return root
 
     def __getitem__(self, key):
+        sel_node = self.root._select(key)
+        print(sel_node._get_data())
         pass
 
     def __setitem__(self, key, value):
@@ -157,10 +159,27 @@ class Node(BaseNode):
 
         pass
 
+    def _commit(self):
+        """
+        Call the _commit() methods of the children nodes.
+        """
+
+        self.rest._commit()
+        for child in self.bucket.values():
+            child._commit()
+
+        pass
+
+
     def _get_data(self):
         """
         Pack the necessary data.
         """
+        data = {"type":"intermediate", "rest":self.rest}
+        for (key, value) in self.bucket.items():
+            data[key] = value
+
+        return encode(data)
         pass
 
 
@@ -244,6 +263,9 @@ def main():
     for i in range(0, 20):
         tree.__setitem__(randint(0,200), "value")
 
+    tree.__setitem__(5, "test")
+
+    tree.__getitem__(5)
 
 
 
