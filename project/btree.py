@@ -69,7 +69,6 @@ class Tree(MutableMapping):
         """
         offset = self.root._commit()
         f = open("data", "ba")
-        print({"root_offset":offset})
         f.write(encode({"root_offset":offset}))
         f.close()
 
@@ -246,11 +245,12 @@ class LazyNode(object):
         f.write(data)
         print("data written: " + str(data))
         f.close()
+        self.offset = offset
 
         self._changed = False
         return offset
 
-    def _load():
+    def _load(self):
         """
         Load the node from disk.
         """
@@ -258,17 +258,27 @@ class LazyNode(object):
         f = open("data", "br")
         i = 0
         while True:
-            f.seek(-i,2)
-            data = f.read()
+            f.seek(self.offset)
+            data = f.read(i)
             try: 
-                footer = decode(data)
+                node_dict = decode(data)
                 break
             except:
                 i += 1
 
-        print(footer)
-        print(footer[b'root_offset'])
+        if node_dict[b'type'] == "node":
+            new_node = self._create_node()
+            entries = node_dict[entries]
+            if entries.has_key("rest"):
+                new_node.rest = entries["rest"]
+                entries.pop["rest"]
 
+            for (key, value) in entries:
+                new_node.bucket[key] = value
+
+            return new_node
+
+     
         pass
 
     def __getattr__(self, name):
@@ -302,8 +312,23 @@ def main():
     print(str(tree.__getitem__(30)))
     tree._commit()
 
-    
+    f = open("data", "br")
+    i = 0
+    while True:
+        f.seek(-i,2)
+        data = f.read()
+        try: 
+            footer = decode(data)
+            break
+        except:
+            i += 1
 
+    print(footer)
+    print(footer[b'root_offset'])
+
+    newTree = Tree()
+    lazy_root = LazyNode(node=newTree.root, offset=footer[b'root_offset'])
+    print(str(lazy_root.__getitem__(30)))
 
 
 
