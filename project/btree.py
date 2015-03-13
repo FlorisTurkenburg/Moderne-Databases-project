@@ -227,8 +227,7 @@ class LazyNode(object):
             return
 
         data = self.node._commit()
-        f = open("data", "wb")
-        f.seek(0,2)
+        f = open("data", "ba")
         offset = f.tell()
         f.write(data)
         print("data written: " + str(data))
