@@ -75,7 +75,7 @@ class BaseNode(object):
     def __init__(self, tree):
         self.tree = tree
         self.bucket = SortedDict()
-        self.changed = False
+        self._changed = False
 
     def _split(self):
         """
@@ -110,8 +110,8 @@ class BaseNode(object):
         pass
 
     def _commit(self):
-
-        pass
+        data = {"type":"Leaf", "entries":self.bucket}
+        return(encode(data))
 
 
 class Node(BaseNode):
@@ -164,13 +164,14 @@ class Node(BaseNode):
         """
 
         data = {}
-        data["rest"] = self.rest._commit()
-        for (key, value) in self.bucket.items():
-            data[key] = child._commit()
+        if self.rest != None:
+            data["rest"] = self.rest._commit()
+        if self.bucket != None:
+            for (key, value) in self.bucket.items():
+                data[key] = value._commit()
 
         return encode({"type":"node", "entries":data})
 
-        pass
 
 
     def _get_data(self):
@@ -190,9 +191,6 @@ class Leaf(Mapping, BaseNode):
     def __len__(self):
         pass
 
-    def _commit(self):
-        data = {"type":"Leaf", "entries":self.bucket}
-        return(encode(data))
 
     def _get_data(self):
         """
@@ -219,7 +217,7 @@ class LazyNode(object):
         if self.node is None:
             return False
 
-        return self.node.changed
+        return self.node._changed
 
     def _commit(self):
         """
@@ -229,10 +227,11 @@ class LazyNode(object):
             return
 
         data = self.node._commit()
-        f = open("data", "rw")
-        f.seek(from_what=2)
+        f = open("data", "wb")
+        f.seek(0,2)
         offset = f.tell()
         f.write(data)
+        print("data written: " + str(data))
         f.close()
 
         self._changed = False
@@ -268,8 +267,8 @@ class LazyNode(object):
 
 def main():
     tree = Tree()
-    for i in range(0, 20):
-        tree.__setitem__(randint(0,200), "value")
+    for i in range(0, 50):
+        tree.__setitem__(randint(0,2000), "value")
 
     tree._commit()
 
