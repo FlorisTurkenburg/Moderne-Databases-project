@@ -187,13 +187,6 @@ class Node(BaseNode):
 
 
 
-    def _get_data(self):
-        """
-        Pack the necessary data.
-        """
-        pass
-
-
 class Leaf(Mapping, BaseNode):
     def __getitem__(self, key):
         pass
@@ -205,11 +198,6 @@ class Leaf(Mapping, BaseNode):
         pass
 
 
-    def _get_data(self):
-        """
-        Pack the necessary data.
-        """
-        pass
 
 class LazyNode(object):
     _init = False
@@ -250,6 +238,8 @@ class LazyNode(object):
         self._changed = False
         return offset
 
+
+    ## NOT WORKING YET
     def _load(self):
         """
         Load the node from disk.
@@ -312,6 +302,8 @@ def main():
     print(str(tree.__getitem__(30)))
     tree._commit()
 
+
+    # Code to retrieve the latest footer
     f = open("data", "br")
     i = 0
     while True:
@@ -326,9 +318,9 @@ def main():
     print(footer)
     print(footer[b'root_offset'])
 
-    newTree = Tree()
-    lazy_root = LazyNode(node=newTree.root, offset=footer[b'root_offset'])
-    print(str(lazy_root.__getitem__(30)))
+    # newTree = Tree()
+    # lazy_root = LazyNode(node=newTree.root, offset=footer[b'root_offset'])
+    # print(str(lazy_root.__getitem__(30)))
 
 
 
