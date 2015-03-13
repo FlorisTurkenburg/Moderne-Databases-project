@@ -3,8 +3,8 @@
 # This code is build on the framework given to us for the Modern Databases     #
 # course.                                                                      #         
 #                                                                              #
-# Author: Floris Turkenburg                                                    #
-# UvANetID: 10419667                                                           #
+# Authors: Floris Turkenburg, Sander Ginn                                      #
+# UvANetID: 10419667, 10409939                                                 #
 # Data: March 2015                                                             #
 ################################################################################
 
@@ -39,7 +39,14 @@ class Tree(MutableMapping):
         return LazyNode(node=root)
 
     def __getitem__(self, key):
-        pass
+        
+        current_node = self.root
+        while(hasattr(current_node, "_select")):
+            current_node = current_node._select(key)
+
+        if current_node != None:
+            return current_node.bucket[key]
+
 
     def __setitem__(self, key, value):
         """
@@ -128,17 +135,18 @@ class Node(BaseNode):
 
         if key < min(self.bucket):
             new_node = self.rest
-        
+            return new_node
+
         elif key >= max(self.bucket):
             new_node = self.bucket.values()[-1]
-        
+            return new_node
+
         for i in range(0, len(self.bucket.keys())-1):
             if key >= self.bucket.keys()[i] and key < self.bucket.keys()[i+1]:
                 new_node = self.bucket.values()[i]
-                break
+                return new_node
         
-        return new_node
-
+        
         pass
 
     def _insert(self, key, value):
@@ -269,6 +277,8 @@ def main():
     for i in range(0, 50):
         tree.__setitem__(randint(0,2000), "value")
 
+    tree.__setitem__(30, "test")
+    print(str(tree.__getitem__(30)))
     tree._commit()
 
 
