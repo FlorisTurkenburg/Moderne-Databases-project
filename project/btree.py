@@ -28,15 +28,15 @@ class Tree(MutableMapping):
 
     @staticmethod
     def _create_node(*args, **kwargs):
-        return LazyNode(node =Node(*args, **kwargs))
+        return Node(*args, **kwargs)
 
     def _create_root(self, lhs, rhs):
-        root = LazyNode(node=self._create_node(tree=self))
+        root = self._create_node(tree=self)
         root.rest = lhs
         root.bucket[min(rhs.bucket)] = rhs
         root._changed = True
         
-        return root
+        return LazyNode(node=root)
 
     def __getitem__(self, key):
         pass
@@ -84,14 +84,14 @@ class BaseNode(object):
         in the bucket of the current node. The higher keys are being stored in
         the bucket of the new node. Afterwards, the new node is being returned.
         """
-        other = LazyNode(node=self.__class__(self.tree))
+        other = self.__class__(self.tree)
         size = len(self.bucket)
         for i in range(int(size/2)):
             key, value = self.bucket.popitem()
             other.bucket[key] = value
 
         print("New node created: " + str(other))
-        return other
+        return LazyNode(node=other)
 
     def _insert(self, key, value):
         """
@@ -149,7 +149,7 @@ class Node(BaseNode):
         """
 
         selected_node = self._select(key)
-        # print("Node selected: " + str(selected_node.bucket))
+        print("Node selected: " + str(selected_node.bucket))
         split_node = selected_node._insert(key, value)
         if split_node != None:
             return super()._insert(min(split_node.bucket), split_node)
