@@ -67,7 +67,13 @@ class Tree(MutableMapping):
         """
         Commit the changes.
         """
-        self.root._commit()
+        offset = self.root._commit()
+        f = open("data", "ba")
+        print({"root_offset":offset})
+        f.write(encode({"root_offset":offset}))
+        f.close()
+
+
 
     def __delitem__(self, key):
         pass
@@ -244,10 +250,25 @@ class LazyNode(object):
         self._changed = False
         return offset
 
-    def _load(self):
+    def _load():
         """
         Load the node from disk.
         """
+
+        f = open("data", "br")
+        i = 0
+        while True:
+            f.seek(-i,2)
+            data = f.read()
+            try: 
+                footer = decode(data)
+                break
+            except:
+                i += 1
+
+        print(footer)
+        print(footer[b'root_offset'])
+
         pass
 
     def __getattr__(self, name):
@@ -280,6 +301,7 @@ def main():
     tree.__setitem__(30, "test")
     print(str(tree.__getitem__(30)))
     tree._commit()
+
 
 
 
