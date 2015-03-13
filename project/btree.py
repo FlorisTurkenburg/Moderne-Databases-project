@@ -24,23 +24,21 @@ class Tree(MutableMapping):
 
     @staticmethod
     def _create_leaf(*args, **kwargs):
-        return Leaf(*args, **kwargs)
+        return LazyNode(node=Leaf(*args, **kwargs))
 
     @staticmethod
     def _create_node(*args, **kwargs):
-        return Node(*args, **kwargs)
+        return LazyNode(node =Node(*args, **kwargs))
 
     def _create_root(self, lhs, rhs):
-        root = self._create_node(tree=self)
+        root = LazyNode(node=self._create_node(tree=self))
         root.rest = lhs
         root.bucket[min(rhs.bucket)] = rhs
-        root.changed = True
+        root._changed = True
         
         return root
 
     def __getitem__(self, key):
-        sel_node = self.root._select(key)
-        print(sel_node._get_data())
         pass
 
     def __setitem__(self, key, value):
@@ -86,7 +84,7 @@ class BaseNode(object):
         in the bucket of the current node. The higher keys are being stored in
         the bucket of the new node. Afterwards, the new node is being returned.
         """
-        other = self.__class__(self.tree)
+        other = LazyNode(node=self.__class__(self.tree))
         size = len(self.bucket)
         for i in range(int(size/2)):
             key, value = self.bucket.popitem()
@@ -102,11 +100,11 @@ class BaseNode(object):
         """
 
         self.bucket[key] = value
-        self.changed = True
+        self._changed = True
         print(str(key)+" inserted into: " + str(self.bucket))
         if len(self.bucket) > max_node_size:
             new_node = self._split()
-            new_node.changed = True
+            new_node._changed = True
             return new_node
 
         pass
@@ -151,7 +149,7 @@ class Node(BaseNode):
         """
 
         selected_node = self._select(key)
-        print("Node selected: " + str(selected_node.bucket))
+        # print("Node selected: " + str(selected_node.bucket))
         split_node = selected_node._insert(key, value)
         if split_node != None:
             return super()._insert(min(split_node.bucket), split_node)
@@ -175,11 +173,6 @@ class Node(BaseNode):
         """
         Pack the necessary data.
         """
-        data = {"type":"intermediate", "rest":self.rest}
-        for (key, value) in self.bucket.items():
-            data[key] = value
-
-        return encode(data)
         pass
 
 
@@ -241,7 +234,7 @@ class LazyNode(object):
         Loads the node if it hasn't been loaded yet, and dispatches the request
         to the node.
         """
-        if not self.node:
+        if self.node == None:
             self.node = self._load()
         
         return getattr(self.node, name)
@@ -263,9 +256,7 @@ def main():
     for i in range(0, 20):
         tree.__setitem__(randint(0,200), "value")
 
-    tree.__setitem__(5, "test")
-
-    tree.__getitem__(5)
+    
 
 
 
