@@ -60,7 +60,7 @@ class Tree(MutableMapping):
         """
         Commit the changes.
         """
-        self._commit()
+        self.root._commit()
 
     def __delitem__(self, key):
         pass
@@ -110,6 +110,7 @@ class BaseNode(object):
         pass
 
     def _commit(self):
+
         pass
 
 
@@ -162,9 +163,12 @@ class Node(BaseNode):
         Call the _commit() methods of the children nodes.
         """
 
-        self.rest._commit()
-        for child in self.bucket.values():
-            child._commit()
+        data = {}
+        data["rest"] = self.rest._commit()
+        for (key, value) in self.bucket.items():
+            data[key] = child._commit()
+
+        return encode({"type":"node", "entries":data})
 
         pass
 
@@ -185,6 +189,10 @@ class Leaf(Mapping, BaseNode):
 
     def __len__(self):
         pass
+
+    def _commit(self):
+        data = {"type":"Leaf", "entries":self.bucket}
+        return(encode(data))
 
     def _get_data(self):
         """
@@ -220,8 +228,15 @@ class LazyNode(object):
         if not self.changed:
             return
 
-        self.node._commit()
-        self.changed = False
+        data = self.node._commit()
+        f = open("data", "rw")
+        f.seek(from_what=2)
+        offset = f.tell()
+        f.write(data)
+        f.close()
+
+        self._changed = False
+        return offset
 
     def _load(self):
         """
@@ -256,7 +271,7 @@ def main():
     for i in range(0, 20):
         tree.__setitem__(randint(0,200), "value")
 
-    
+    tree._commit()
 
 
 
