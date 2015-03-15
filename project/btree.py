@@ -14,6 +14,7 @@ from random import randint
 from collections import Mapping, MutableMapping
 from sortedcontainers import SortedDict
 from encode import encode, decode
+from checksum import add_integrity, check_integrity
 
 max_node_size = 4
 
@@ -83,7 +84,7 @@ class Tree(MutableMapping):
         """
         offset = self.root._commit()
         f = open("data", "ba")
-        f.write(encode({"root_offset":offset}))
+        f.write(add_integrity(encode({"root_offset":offset})))
         f.close()
 
 
@@ -140,7 +141,7 @@ class BaseNode(object):
             str(len(self.bucket)))
         data = {"type":"Leaf", "entries":self.bucket}
         print("Leaf data: "+ str(data))
-        return(encode(data))
+        return(add_integrity(encode(data)))
 
 
 class Node(BaseNode):
@@ -206,12 +207,12 @@ class Node(BaseNode):
                 str(len(self.bucket)))
             print("Node data: " + 
                 str({"type":"Node", "rest":rest_data, "entries":data}))
-            return encode({"type":"Node", "rest":rest_data, "entries":data})
+            return add_integrity(encode({"type":"Node", "rest":rest_data, "entries":data}))
 
         print("Node committed: " + str(self)+ " bucketsize: " + 
             str(len(self.bucket)))
         print("Node data: "+ str({"type":"Node", "entries":data}))
-        return encode({"type":"Node", "entries":data})
+        return add_integrity(encode({"type":"Node", "entries":data}))
 
 
     def __getitem__(self, key):
@@ -226,14 +227,15 @@ class Leaf(Mapping, BaseNode):
         if key in self.bucket:
             return self.bucket[key]
         pass
+            
 
     def __iter__(self):
-        pass
+        return iter(self.bucket)
+
 
     def __len__(self):
         return len(self.bucket)
 
-        pass
 
 
 
@@ -290,7 +292,7 @@ class LazyNode(object):
             f.seek(self.offset)
             data = f.read(i)
             try: 
-                node_dict = decode(data)
+                node_dict = decode(check_integrity(data))
                 break
             except:
                 i += 1
@@ -375,13 +377,14 @@ def get_last_footer():
         
         data = f.read(i-read_till)
         try: 
-            footer = decode(data)
+            footer = decode(check_integrity(data))
             if b"root_offset" in footer:
                 break
             else:
                 read_till = i
 
         except:
+
             i += 1
 
     
@@ -397,6 +400,9 @@ def main():
     # Load the tree from disk and perform some tests, like inserting a new key
     # or retrieving a key.
     footer = get_last_footer()
+    if footer == None:
+        print("No footer was found, terminating program...")
+        return
     
     new_tree = Tree()
     lazy_root = LazyNode( offset=footer[b"root_offset"])
@@ -411,7 +417,7 @@ def main():
     if value != None: 
         print("Found newly added test key:", str(value))
     else:
-        print("Key:",str(key), "not found")
+        print("Key:",str(666), "not found")
 
 
 
