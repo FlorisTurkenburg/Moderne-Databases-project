@@ -5,7 +5,7 @@
 #                                                                              #
 # Authors: Floris Turkenburg, Sander Ginn                                      #
 # UvANetID: 10419667, 10409939                                                 #
-# Data: March 2015                                                             #
+# Date: March 2015                                                             #
 ################################################################################
 
 
@@ -16,6 +16,7 @@ from sortedcontainers import SortedDict
 from encode import encode, decode
 
 max_node_size = 4
+print_once = 0
 
 class Tree(MutableMapping):
     def __init__(self, max_size=1024):
@@ -35,24 +36,29 @@ class Tree(MutableMapping):
         root.rest = lhs
         root.bucket[min(rhs.bucket)] = rhs
         # Delete the lowest key from the right child and put the corresponding
-        # value into its rest. This does not happen for leaf nodes.
+        # value into its rest. This should not happen for leaf nodes, as they do
+        # not have a rest.
         print(type(rhs.node))
-        if hasattr(rhs, "_select"):
+        if hasattr(rhs, "rest"):
             rhs.node.rest = rhs.bucket[min(rhs.bucket)]
             rhs.node.bucket.pop(min(rhs.bucket))
             print("Rest is: " + str(rhs.rest))
-        root._changed = True
+        root.changed = True
         
         return LazyNode(node=root)
 
     def __getitem__(self, key):
-        
-        current_node = self.root
-        while(hasattr(current_node, "_select")):
-            current_node = current_node._select(key)
+        return self.root.__getitem__(key)
 
-        if current_node != None:
-            return current_node.bucket[key]
+        # current_node = self.root
+        # while(hasattr(current_node, "_select")):
+        #     print("hi")
+        #     print(str(current_node.node))
+        #     current_node = current_node._select(key)
+
+        # if current_node != None:
+        #     print("Current_node Type: " + str(type(current_node.node)))
+        #     return current_node.bucket[key]
 
 
     def __setitem__(self, key, value):
@@ -94,7 +100,7 @@ class BaseNode(object):
     def __init__(self, tree):
         self.tree = tree
         self.bucket = SortedDict()
-        self._changed = False
+        # self._changed = False
 
     def _split(self):
         """
@@ -119,17 +125,19 @@ class BaseNode(object):
         """
 
         self.bucket[key] = value
-        self._changed = True
+        self.changed = True
         print(str(key)+" inserted into: " + str(self.bucket))
         if len(self.bucket) > max_node_size:
             new_node = self._split()
-            new_node._changed = True
+            new_node.changed = True
             return new_node
 
         pass
 
-    def _commit(self):
+    def _get_data(self):
+        print("Leaf committed: " + str(self) + " bucketsize: " + str(len(self.bucket)))
         data = {"type":"Leaf", "entries":self.bucket}
+        print("Leaf data: "+ str(data))
         return(encode(data))
 
 
@@ -170,7 +178,7 @@ class Node(BaseNode):
         """
 
         selected_node = self._select(key)
-        # print("Node selected: " + str(selected_node.bucket))
+        print("Node selected: " + str(selected_node.bucket) + "\n of type: "+ str(type(selected_node)))
         split_node = selected_node._insert(key, value)
         if split_node != None:
             return super()._insert(min(split_node.bucket), split_node)
@@ -178,24 +186,38 @@ class Node(BaseNode):
 
         pass
 
-    def _commit(self):
+    def _get_data(self):
         """
         Call the _commit() methods of the children nodes.
         """
 
         data = {}
-        if self.rest != None:
-            data["rest"] = self.rest._commit()
         if self.bucket != None:
             for (key, value) in self.bucket.items():
                 data[key] = value._commit()
 
-        return encode({"type":"node", "entries":data})
+        if self.rest != None:
+            rest_data = self.rest._commit()
+            print("Node committed: " + str(self)+ " bucketsize: " + str(len(self.bucket)))
+            print("Node data: " + str({"type":"Node", "rest":rest_data, "entries":data}))
+            return encode({"type":"Node", "rest":rest_data, "entries":data})
+
+        print("Node committed: " + str(self)+ " bucketsize: " + str(len(self.bucket)))
+        print("Node data: "+ str({"type":"Node", "entries":data}))
+        return encode({"type":"Node", "entries":data})
+
+
+    def __getitem__(self, key):
+        selected_node = self._select(key)
+        return selected_node.__getitem__(key)
+
 
 
 
 class Leaf(Mapping, BaseNode):
     def __getitem__(self, key):
+        if key in self.bucket:
+            return self.bucket[key]
         pass
 
     def __iter__(self):
@@ -225,7 +247,7 @@ class LazyNode(object):
         if self.node is None:
             return False
 
-        return self.node._changed
+        return self.node.changed
 
     def _commit(self):
         """
@@ -234,11 +256,12 @@ class LazyNode(object):
         if not self.changed:
             return
 
-        data = self.node._commit()
+        data = self.node._get_data()
         f = open("data", "ba")
         offset = f.tell()
         f.write(data)
         print("data written: " + str(data))
+        print("written at: " + str(offset))
         f.close()
         self.offset = offset
 
@@ -246,7 +269,7 @@ class LazyNode(object):
         return offset
 
 
-    ## NOT WORKING YET
+    # ITS FREAKING WORKING
     def _load(self):
         """
         Load the node from disk.
@@ -262,18 +285,37 @@ class LazyNode(object):
                 break
             except:
                 i += 1
+        f.close()
 
-        if node_dict[b'type'] == "node":
-            new_node = self._create_node()
-            entries = node_dict[entries]
-            if entries.has_key("rest"):
-                new_node.rest = entries["rest"]
-                entries.pop["rest"]
+        global print_once
+        if print_once == 0:
+            print("Load offset: " + str(self.offset))
+            print(node_dict)
+            print_once =0
 
-            for (key, value) in entries:
-                new_node.bucket[key] = value
+        if node_dict[b"type"] == b"Node":
+            new_node = Tree._create_node(tree=self)
+            entries = node_dict[b"entries"]
+            print("reached?")
+            print(entries)
+
+            for (key, value) in entries.items():
+                new_node.bucket[key] = LazyNode(offset=value)
+
+            if b"rest" in node_dict:
+                new_node.rest = LazyNode(offset=node_dict[b"rest"])
 
             return new_node
+
+        if node_dict[b"type"] == b"Leaf":
+            new_leaf = Tree._create_leaf(tree=self)
+            entries = node_dict[b"entries"]
+
+            for (key, value) in entries.items():
+                new_leaf.bucket[key] = value #LazyNode(offset=value)
+
+            return new_leaf
+
 
      
         pass
@@ -301,13 +343,13 @@ class LazyNode(object):
 
 
 def main():
-    tree = Tree()
-    for i in range(0, 50):
-        tree.__setitem__(randint(0,2000), "value")
+    # tree = Tree()
+    # for i in range(0, 15):
+    #     tree.__setitem__(randint(0,2000), "value")
 
-    tree.__setitem__(30, "test")
-    print(str(tree.__getitem__(30)))
-    tree._commit()
+    # tree.__setitem__(30, "test")
+    # print(str(tree.__getitem__(30)))
+    # tree._commit()
 
 
     # Code to retrieve the latest footer
@@ -323,11 +365,17 @@ def main():
             i += 1
 
     print(footer)
-    print(footer[b'root_offset'])
+    print(footer[b"root_offset"])
 
-    # newTree = Tree()
-    # lazy_root = LazyNode(node=newTree.root, offset=footer[b'root_offset'])
-    # print(str(lazy_root.__getitem__(30)))
+    new_tree = Tree()
+    lazy_root = LazyNode( offset=footer[b"root_offset"])
+    new_tree.root = lazy_root
+    # print(str(new_tree.__getitem__(30)))
+    try: 
+        print(str(new_tree.__getitem__(30)))
+    except RuntimeError as e:
+        # if e.message == 'maximum recursion depth exceeded while calling a Python object':
+        print("recursion maxed")
 
 
 
