@@ -136,7 +136,8 @@ class BaseNode(object):
         pass
 
     def _get_data(self):
-        print("Leaf committed: " + str(self) + " bucketsize: " + str(len(self.bucket)))
+        print("Leaf committed: " + str(self) + " bucketsize: " + 
+            str(len(self.bucket)))
         data = {"type":"Leaf", "entries":self.bucket}
         print("Leaf data: "+ str(data))
         return(encode(data))
@@ -179,7 +180,8 @@ class Node(BaseNode):
         """
 
         selected_node = self._select(key)
-        print("Node selected: " + str(selected_node.bucket) + "\n of type: "+ str(type(selected_node)))
+        print("Node selected: " + str(selected_node.bucket) + "\n of type: "+ 
+            str(type(selected_node)))
         split_node = selected_node._insert(key, value)
         self.changed = True
         if split_node != None:
@@ -200,11 +202,14 @@ class Node(BaseNode):
 
         if self.rest != None:
             rest_data = self.rest._commit()
-            print("Node committed: " + str(self)+ " bucketsize: " + str(len(self.bucket)))
-            print("Node data: " + str({"type":"Node", "rest":rest_data, "entries":data}))
+            print("Node committed: " + str(self)+ " bucketsize: " + 
+                str(len(self.bucket)))
+            print("Node data: " + 
+                str({"type":"Node", "rest":rest_data, "entries":data}))
             return encode({"type":"Node", "rest":rest_data, "entries":data})
 
-        print("Node committed: " + str(self)+ " bucketsize: " + str(len(self.bucket)))
+        print("Node committed: " + str(self)+ " bucketsize: " + 
+            str(len(self.bucket)))
         print("Node data: "+ str({"type":"Node", "entries":data}))
         return encode({"type":"Node", "entries":data})
 
@@ -264,8 +269,8 @@ class LazyNode(object):
         f = open("data", "ba")
         offset = f.tell()
         f.write(data)
-        print("data written: " + str(data))
-        print("written at: " + str(offset))
+        print("Data written: " + str(data))
+        print("Written at: " + str(offset))
         f.close()
         self.offset = offset
 
@@ -352,7 +357,10 @@ def create_initial_tree():
     
     
 
-# Retrieve the latest footer
+# Retrieve the latest footer, it will also retrieve the footer if it is not the
+# last data in the file (but still the last footer), unless the data after the
+# footer is not decodeable (incomplete data, could occur when a write to the
+# file was not succesfully finished)
 def get_last_footer():
     f = open("data", "br")
     i = 0
@@ -383,24 +391,27 @@ def get_last_footer():
     
 
 def main():
-    create_initial_tree()
+    # Create a new tree if needed:
+    # create_initial_tree()
     
+    # Load the tree from disk and perform some tests, like inserting a new key
+    # or retrieving a key.
     footer = get_last_footer()
-    # new_tree = Tree()
-    # lazy_root = LazyNode( offset=footer[b"root_offset"])
-    # new_tree.root = lazy_root
-    # # print(str(new_tree.__getitem__(30)))
-    # try: 
-    #     print(str(new_tree.__getitem__(30)))
-    # except RuntimeError as e:
-    #     # if e.message == 'maximum recursion depth exceeded while calling a Python object':
-    #     # print("recursion maxed")
-    #     print(e)
-
+    
+    new_tree = Tree()
+    lazy_root = LazyNode( offset=footer[b"root_offset"])
+    new_tree.root = lazy_root
+    
+    print("Value of key", repr("30"),"is:", str(new_tree.__getitem__(30)))
+    
     # new_tree.__setitem__(666, "insert_test")
     # new_tree._commit()
 
-    # print("found newly added test key: " + str(new_tree.__getitem__(666)))
+    value = new_tree.__getitem__(666)
+    if value != None: 
+        print("Found newly added test key:", str(value))
+    else:
+        print("Key:",str(key), "not found")
 
 
 
