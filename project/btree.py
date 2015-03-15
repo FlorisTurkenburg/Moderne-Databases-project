@@ -35,6 +35,7 @@ class Tree(MutableMapping):
         root = self._create_node(tree=self)
         root.rest = lhs
         root.bucket[min(rhs.bucket)] = rhs
+
         # Delete the lowest key from the right child and put the corresponding
         # value into its rest. This should not happen for leaf nodes, as they do
         # not have a rest.
@@ -48,6 +49,9 @@ class Tree(MutableMapping):
         return LazyNode(node=root)
 
     def __getitem__(self, key):
+        """
+        Get the value corresonding with the key.
+        """
         print("Searching for key: " + str(key))
         return self.root.__getitem__(key)
 
@@ -80,7 +84,8 @@ class Tree(MutableMapping):
 
     def _commit(self):
         """
-        Commit the changes.
+        Commit the changes. Calling the _commit() method of the root node, and
+        writing its offset in the footer at the end of the file.
         """
         offset = self.root._commit()
         f = open("data", "ba")
@@ -137,6 +142,12 @@ class BaseNode(object):
         pass
 
     def _get_data(self):
+        """
+        Returns the encoded data of the leaf node, containing its type, and the
+        key/value pairs. These values will eventually be the offsets of the 
+        documents.
+        """
+
         print("Leaf committed: " + str(self) + " bucketsize: " + 
             str(len(self.bucket)))
         data = {"type":"Leaf", "entries":self.bucket}
@@ -193,7 +204,9 @@ class Node(BaseNode):
 
     def _get_data(self):
         """
-        Call the _commit() methods of the children nodes.
+        Call the _commit() methods of the children nodes. And return the encoded
+        data of the node, which contains its type, and the offsets of the 
+        children nodes.
         """
 
         data = {}
@@ -207,7 +220,8 @@ class Node(BaseNode):
                 str(len(self.bucket)))
             print("Node data: " + 
                 str({"type":"Node", "rest":rest_data, "entries":data}))
-            return add_integrity(encode({"type":"Node", "rest":rest_data, "entries":data}))
+            return add_integrity(encode({"type":"Node", "rest":rest_data, 
+                "entries":data}))
 
         print("Node committed: " + str(self)+ " bucketsize: " + 
             str(len(self.bucket)))
@@ -216,6 +230,11 @@ class Node(BaseNode):
 
 
     def __getitem__(self, key):
+        """
+        Recursively call the __getitem__() method, eventually reaching the 
+        __getitem__() of a leaf, which returns the matched value, or None if the
+        key was not found.
+        """
         selected_node = self._select(key)
         return selected_node.__getitem__(key)
 
@@ -224,6 +243,10 @@ class Node(BaseNode):
 
 class Leaf(Mapping, BaseNode):
     def __getitem__(self, key):
+        """
+        Returns the value that corresponds with the key, if the key is not 
+        present, None is returned.
+        """
         if key in self.bucket:
             return self.bucket[key]
         pass
