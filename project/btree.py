@@ -356,40 +356,51 @@ def create_initial_tree():
 def get_last_footer():
     f = open("data", "br")
     i = 0
+    read_till = 0
 
     while True:
-        f.seek(-i,2)
-        data = f.read()
+        try:
+            f.seek(-i,2)
+        except OSError:
+            print("Could not retrieve footer, file is incorrect")
+            return None
+        
+        data = f.read(i-read_till)
         try: 
             footer = decode(data)
-            break
+            if b"root_offset" in footer:
+                break
+            else:
+                read_till = i
+
         except:
             i += 1
 
+    
     print(footer)
     print(footer[b"root_offset"])
     return footer
     
 
 def main():
-    # create_initial_tree()
-
+    create_initial_tree()
+    
     footer = get_last_footer()
-    new_tree = Tree()
-    lazy_root = LazyNode( offset=footer[b"root_offset"])
-    new_tree.root = lazy_root
-    # print(str(new_tree.__getitem__(30)))
-    try: 
-        print(str(new_tree.__getitem__(30)))
-    except RuntimeError as e:
-        # if e.message == 'maximum recursion depth exceeded while calling a Python object':
-        # print("recursion maxed")
-        print(e)
+    # new_tree = Tree()
+    # lazy_root = LazyNode( offset=footer[b"root_offset"])
+    # new_tree.root = lazy_root
+    # # print(str(new_tree.__getitem__(30)))
+    # try: 
+    #     print(str(new_tree.__getitem__(30)))
+    # except RuntimeError as e:
+    #     # if e.message == 'maximum recursion depth exceeded while calling a Python object':
+    #     # print("recursion maxed")
+    #     print(e)
 
-    new_tree.__setitem__(666, "insert_test")
-    new_tree._commit()
+    # new_tree.__setitem__(666, "insert_test")
+    # new_tree._commit()
 
-    print("found newly added test key: " + str(new_tree.__getitem__(666)))
+    # print("found newly added test key: " + str(new_tree.__getitem__(666)))
 
 
 
