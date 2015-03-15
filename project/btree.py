@@ -34,6 +34,13 @@ class Tree(MutableMapping):
         root = self._create_node(tree=self)
         root.rest = lhs
         root.bucket[min(rhs.bucket)] = rhs
+        # Delete the lowest key from the right child and put the corresponding
+        # value into its rest. This does not happen for leaf nodes.
+        print(type(rhs.node))
+        if hasattr(rhs, "_select"):
+            rhs.node.rest = rhs.bucket[min(rhs.bucket)]
+            rhs.node.bucket.pop(min(rhs.bucket))
+            print("Rest is: " + str(rhs.rest))
         root._changed = True
         
         return LazyNode(node=root)
@@ -163,7 +170,7 @@ class Node(BaseNode):
         """
 
         selected_node = self._select(key)
-        print("Node selected: " + str(selected_node.bucket))
+        # print("Node selected: " + str(selected_node.bucket))
         split_node = selected_node._insert(key, value)
         if split_node != None:
             return super()._insert(min(split_node.bucket), split_node)
