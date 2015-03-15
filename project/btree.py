@@ -16,7 +16,6 @@ from sortedcontainers import SortedDict
 from encode import encode, decode
 
 max_node_size = 4
-print_once = 0
 
 class Tree(MutableMapping):
     def __init__(self, max_size=1024):
@@ -48,6 +47,7 @@ class Tree(MutableMapping):
         return LazyNode(node=root)
 
     def __getitem__(self, key):
+        print("Searching for key: " + str(key))
         return self.root.__getitem__(key)
 
         # current_node = self.root
@@ -70,6 +70,7 @@ class Tree(MutableMapping):
 
         root_split = self.root._insert(key, value)
         if root_split != None:
+            root_split.node.changed = True
             new_root = self._create_root(self.root, root_split)
             self.root = new_root
             print("Created new root")
@@ -100,7 +101,7 @@ class BaseNode(object):
     def __init__(self, tree):
         self.tree = tree
         self.bucket = SortedDict()
-        # self._changed = False
+        self.changed = False
 
     def _split(self):
         """
@@ -129,7 +130,7 @@ class BaseNode(object):
         print(str(key)+" inserted into: " + str(self.bucket))
         if len(self.bucket) > max_node_size:
             new_node = self._split()
-            new_node.changed = True
+            new_node.node.changed = True
             return new_node
 
         pass
@@ -180,6 +181,7 @@ class Node(BaseNode):
         selected_node = self._select(key)
         print("Node selected: " + str(selected_node.bucket) + "\n of type: "+ str(type(selected_node)))
         split_node = selected_node._insert(key, value)
+        self.changed = True
         if split_node != None:
             return super()._insert(min(split_node.bucket), split_node)
 
@@ -224,6 +226,8 @@ class Leaf(Mapping, BaseNode):
         pass
 
     def __len__(self):
+        return len(self.bucket)
+
         pass
 
 
@@ -254,7 +258,7 @@ class LazyNode(object):
         Commit the changes if the node has been changed.
         """
         if not self.changed:
-            return
+            return self.offset
 
         data = self.node._get_data()
         f = open("data", "ba")
@@ -269,7 +273,7 @@ class LazyNode(object):
         return offset
 
 
-    # ITS FREAKING WORKING
+    # IT'S FREAKING WORKING
     def _load(self):
         """
         Load the node from disk.
@@ -287,16 +291,12 @@ class LazyNode(object):
                 i += 1
         f.close()
 
-        global print_once
-        if print_once == 0:
-            print("Load offset: " + str(self.offset))
-            print(node_dict)
-            print_once =0
+        print("Load offset: " + str(self.offset))
+        print(node_dict)
 
         if node_dict[b"type"] == b"Node":
             new_node = Tree._create_node(tree=self)
             entries = node_dict[b"entries"]
-            print("reached?")
             print(entries)
 
             for (key, value) in entries.items():
@@ -341,20 +341,22 @@ class LazyNode(object):
         setattr(self.node, name, value)
 
 
+def create_initial_tree(): 
+    tree = Tree()
+    for i in range(0, 15):
+        tree.__setitem__(randint(0,2000), "value")
 
-def main():
-    # tree = Tree()
-    # for i in range(0, 15):
-    #     tree.__setitem__(randint(0,2000), "value")
-
-    # tree.__setitem__(30, "test")
+    tree.__setitem__(30, "test")
     # print(str(tree.__getitem__(30)))
-    # tree._commit()
+    tree._commit()
+    
+    
 
-
-    # Code to retrieve the latest footer
+# Retrieve the latest footer
+def get_last_footer():
     f = open("data", "br")
     i = 0
+
     while True:
         f.seek(-i,2)
         data = f.read()
@@ -366,7 +368,13 @@ def main():
 
     print(footer)
     print(footer[b"root_offset"])
+    return footer
+    
 
+def main():
+    # create_initial_tree()
+
+    footer = get_last_footer()
     new_tree = Tree()
     lazy_root = LazyNode( offset=footer[b"root_offset"])
     new_tree.root = lazy_root
@@ -375,7 +383,14 @@ def main():
         print(str(new_tree.__getitem__(30)))
     except RuntimeError as e:
         # if e.message == 'maximum recursion depth exceeded while calling a Python object':
-        print("recursion maxed")
+        # print("recursion maxed")
+        print(e)
+
+    new_tree.__setitem__(666, "insert_test")
+    new_tree._commit()
+
+    print("found newly added test key: " + str(new_tree.__getitem__(666)))
+
 
 
 
