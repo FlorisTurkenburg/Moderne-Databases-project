@@ -10,6 +10,7 @@
 
 
 #!env/bin/python
+import os
 from random import randint
 from collections import Mapping, MutableMapping
 from sortedcontainers import SortedDict
@@ -73,16 +74,18 @@ class Tree(MutableMapping):
 
         pass
 
-    def _commit(self):
+    def _commit(self, filename):
         """
         Commit the changes. Calling the _commit() method of the root node, and
         writing its offset in the footer at the end of the file.
         """
-        offset = self.root._commit()
-        f = open("data", "ba")
+        offset = self.root._commit(filename)
+        f = open(filename, "ba")
         f.write(add_integrity(encode({"root_offset":offset})))
         f.close()
 
+    def _get_documents(self):
+        return self.root._get_documents()
 
 
     def __delitem__(self, key):
@@ -195,7 +198,7 @@ class Node(BaseNode):
 
         pass
 
-    def _get_data(self):
+    def _get_data(self, filename):
         """
         Call the _commit() methods of the children nodes. And return the encoded
         data of the node, which contains its type, and the offsets of the 
@@ -205,10 +208,10 @@ class Node(BaseNode):
         data = {}
         if self.bucket != None:
             for (key, value) in self.bucket.items():
-                data[key] = value._commit()
+                data[key] = value._commit(filename)
 
         if self.rest != None:
-            rest_data = self.rest._commit()
+            rest_data = self.rest._commit(filename)
             print("Node committed: " + str(self)+ " bucketsize: " + 
                 str(len(self.bucket)))
             print("Node data: " + 
@@ -238,6 +241,15 @@ class Node(BaseNode):
 
         return children_keys
 
+
+    def _get_documents(self):
+        doc_list = []
+        if self.rest != None:
+            doc_list += self.rest._get_documents()
+        for node in self.bucket.values():
+            doc_list += node._get_documents()
+
+        return doc_list
 
 
 class Leaf(Mapping, BaseNode):
@@ -274,6 +286,8 @@ class Leaf(Mapping, BaseNode):
         return len(self.bucket)
 
 
+    def _get_documents(self):
+        return list(self.bucket.keys())
 
 
 class LazyNode(object):
@@ -297,7 +311,7 @@ class LazyNode(object):
 
         return self.node.changed
 
-    def _commit(self):
+    def _commit(self, filename):
         """
         Commit the changes if the node has been changed.
         """
@@ -305,7 +319,7 @@ class LazyNode(object):
             return self.offset
 
         data = self.node._get_data()
-        f = open("data", "ba")
+        f = open(filename, "ba")
         offset = f.tell()
         f.write(data)
         print("Data written: " + str(data))
@@ -392,7 +406,7 @@ def create_initial_tree():
 
     tree.__setitem__(30, "test")
     # print(str(tree.__getitem__(30)))
-    tree._commit()
+    tree._commit("data")
     
     
 
@@ -429,11 +443,11 @@ def get_last_footer():
     print(footer[b"root_offset"])
     return footer
     
-def write_document():
-    f = open("data", "ba")
+def write_document(tofile, data):
+    f = open(tofile, "ba")
     offset = f.tell()
     print("offset: ", str(offset))
-    f.write(add_integrity(encode("Dit is een test document")))
+    f.write(add_integrity(encode(data)))
     f.close()
     return offset
 
@@ -441,16 +455,39 @@ def write_document():
 def insert_document():
     tree = Tree()
 
-    doc_offset = write_document()
+    doc_offset = write_document("data", "Dit is een test document")
     key = "Testkey"
     tree.__setitem__(key, doc_offset)
-    tree._commit()
+    tree._commit("data")
+
+
+
+def compaction(tree):
+    doc_keys = tree._get_documents()
+
+    new_tree = Tree()
+    for key in doc_keys:
+        document_data = tree.__getitem__(key)
+
+        newfile = open("newdata", "ba")
+        write_offset = newfile.tell()
+        newfile.write(add_integrity(encode(document_data)))
+        newfile.close()
+
+        new_tree.__setitem__(key, write_offset)
+
+    new_tree._commit("newdata")
+
+    os.rename("newdata", "data")
+
+
+
 
 
 
 def main():
     # Create a new tree if needed:
-    create_initial_tree()
+    # create_initial_tree()
     
     # Load the tree from disk and perform some tests, like inserting a new key
     # or retrieving a key.
@@ -466,7 +503,9 @@ def main():
     lazy_root = LazyNode( offset=footer[b"root_offset"])
     new_tree.root = lazy_root
     
-    print("all keys: ", str(new_tree.__iter__()))
+    print("all keys: ", str(new_tree._get_documents()))
+
+    # compaction(new_tree)
     # print("Get document: ", str(new_tree.__getitem__(b"Testkey")))
 
     # print("Value of key", repr("30"),"is:", str(new_tree.__getitem__(30)))
