@@ -55,15 +55,6 @@ class Tree(MutableMapping):
         print("Searching for key: " + str(key))
         return self.root.__getitem__(key)
 
-        # current_node = self.root
-        # while(hasattr(current_node, "_select")):
-        #     print("hi")
-        #     print(str(current_node.node))
-        #     current_node = current_node._select(key)
-
-        # if current_node != None:
-        #     print("Current_node Type: " + str(type(current_node.node)))
-        #     return current_node.bucket[key]
 
 
     def __setitem__(self, key, value):
@@ -98,6 +89,8 @@ class Tree(MutableMapping):
         pass
 
     def __iter__(self):
+        return self.root.__iter__()
+
         pass
 
     def __len__(self):
@@ -238,6 +231,12 @@ class Node(BaseNode):
         selected_node = self._select(key)
         return selected_node.__getitem__(key)
 
+    def __iter__(self):
+        children_keys = []
+        for child in self.bucket.values():
+            children_keys.append(child.__iter__())
+
+        return children_keys
 
 
 
@@ -248,11 +247,26 @@ class Leaf(Mapping, BaseNode):
         present, None is returned.
         """
         if key in self.bucket:
-            return self.bucket[key]
+            offset = self.bucket[key]
+            f = open("data", "br")
+            i = 0
+            while True:
+                f.seek(offset)
+                data = f.read(i)
+                try: 
+                    doc_data = decode(check_integrity(data))
+                    break
+                except:
+                    i += 1
+            f.close()
+
+            return doc_data.decode("utf-8")
+
         pass
             
 
     def __iter__(self):
+        # return self.bucket.keys()
         return iter(self.bucket)
 
 
@@ -401,13 +415,13 @@ def get_last_footer():
         data = f.read(i-read_till)
         try: 
             footer = decode(check_integrity(data))
+            print(footer)
             if b"root_offset" in footer:
                 break
             else:
                 read_till = i
 
         except:
-
             i += 1
 
     
@@ -415,13 +429,34 @@ def get_last_footer():
     print(footer[b"root_offset"])
     return footer
     
+def write_document():
+    f = open("data", "ba")
+    offset = f.tell()
+    print("offset: ", str(offset))
+    f.write(add_integrity(encode("Dit is een test document")))
+    f.close()
+    return offset
+
+
+def insert_document():
+    tree = Tree()
+
+    doc_offset = write_document()
+    key = "Testkey"
+    tree.__setitem__(key, doc_offset)
+    tree._commit()
+
+
 
 def main():
     # Create a new tree if needed:
-    # create_initial_tree()
+    create_initial_tree()
     
     # Load the tree from disk and perform some tests, like inserting a new key
     # or retrieving a key.
+
+    # insert_document()
+
     footer = get_last_footer()
     if footer == None:
         print("No footer was found, terminating program...")
@@ -431,16 +466,20 @@ def main():
     lazy_root = LazyNode( offset=footer[b"root_offset"])
     new_tree.root = lazy_root
     
-    print("Value of key", repr("30"),"is:", str(new_tree.__getitem__(30)))
+    print("all keys: ", str(new_tree.__iter__()))
+    # print("Get document: ", str(new_tree.__getitem__(b"Testkey")))
+
+    # print("Value of key", repr("30"),"is:", str(new_tree.__getitem__(30)))
     
     # new_tree.__setitem__(666, "insert_test")
     # new_tree._commit()
 
-    value = new_tree.__getitem__(666)
-    if value != None: 
-        print("Found newly added test key:", str(value))
-    else:
-        print("Key:",str(666), "not found")
+    # value = new_tree.__getitem__(666)
+    # if value != None: 
+    #     print("Found newly added test key:", str(value))
+    # else:
+    #     print("Key:",str(666), "not found")
+
 
 
 
