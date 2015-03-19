@@ -1,0 +1,15 @@
+<html>
+   <head>
+      <title>{{ title }}</title>
+   </head>
+   <body>
+    <h1>{{ title}}</h1>
+     <ul>
+       {% for item in items %}
+         <li><a href="/document/{{ escape(item) }}">{{ escape(item) }}</a></li>
+       {% end %}
+     </ul>
+
+     <a href="/insertDoc/">Click here to insert a document.</a>
+   </body>
+ </html>
