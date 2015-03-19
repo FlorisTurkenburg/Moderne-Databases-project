@@ -47,7 +47,7 @@ class Tree(MutableMapping):
             print("Rest is: " + str(rhs.rest))
         root.changed = True
         
-        return LazyNode(node=root, tree=self.tree)
+        return LazyNode(node=root, tree=self)
 
     def __getitem__(self, key):
         """
@@ -370,7 +370,7 @@ class LazyNode(object):
             print(entries)
 
             for (key, value) in entries.items():
-                new_node.bucket[key] = LazyNode(offset=value, tree=self.tree)
+                new_node.bucket[key.decode("utf-8")] = LazyNode(offset=value, tree=self.tree)
 
             if b"rest" in node_dict:
                 new_node.rest = LazyNode(offset=node_dict[b"rest"], tree=self.tree)
@@ -382,7 +382,7 @@ class LazyNode(object):
             entries = node_dict[b"entries"]
 
             for (key, value) in entries.items():
-                new_leaf.bucket[key] = value
+                new_leaf.bucket[key.decode("utf-8")] = value
 
             return new_leaf
 
@@ -516,11 +516,11 @@ def main():
     tree = start_up(max_size=4)
     
 
-    tree[b"dockey"] = "testdoc" 
-    tree[b"foo"] = "this"
-    tree[b"bar"] = "is"
-    tree[b"what"] = "for"
-    tree[b"up"] = "testing"
+    tree["dockey"] = "testdoc" 
+    tree["foo"] = "this"
+    tree["bar"] = "is"
+    tree["what"] = "for"
+    tree["up"] = "testing"
 
     print("all keys: ", str(tree._get_documents()))
     tree._commit("data")
