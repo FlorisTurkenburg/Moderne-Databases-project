@@ -47,7 +47,7 @@ class Tree(MutableMapping):
             print("Rest is: " + str(rhs.rest))
         root.changed = True
         
-        return LazyNode(node=root)
+        return LazyNode(node=root, tree=self.tree)
 
     def __getitem__(self, key):
         """
@@ -65,6 +65,9 @@ class Tree(MutableMapping):
         node that resulted from splitting.
         """
 
+        # If values should be the offsets where the document is written in file:
+        value = write_document("data", value)
+
         root_split = self.root._insert(key, value)
         if root_split != None:
             root_split.node.changed = True
@@ -81,7 +84,8 @@ class Tree(MutableMapping):
         """
         offset = self.root._commit(filename)
         f = open(filename, "ba")
-        f.write(add_integrity(encode({"root_offset":offset})))
+        f.write(add_integrity(encode({"root_offset":offset, 
+                                        "max_size":self.max_size})))
         f.close()
 
     def _get_documents(self):
@@ -112,14 +116,14 @@ class BaseNode(object):
         in the bucket of the current node. The higher keys are being stored in
         the bucket of the new node. Afterwards, the new node is being returned.
         """
-        other = self.__class__(self.tree)
+        other = self.__class__(tree=self.tree)
         size = len(self.bucket)
         for i in range(int(size/2)):
             key, value = self.bucket.popitem()
             other.bucket[key] = value
 
         print("New node created: " + str(other))
-        return LazyNode(node=other)
+        return LazyNode(node=other, tree=self.tree)
 
     def _insert(self, key, value):
         """
@@ -130,14 +134,14 @@ class BaseNode(object):
         self.bucket[key] = value
         self.changed = True
         print(str(key)+" inserted into: " + str(self.bucket))
-        if len(self.bucket) > max_node_size:
+        if len(self.bucket) > self.tree.max_size:
             new_node = self._split()
             new_node.node.changed = True
             return new_node
 
         pass
 
-    def _get_data(self):
+    def _get_data(self, filename):
         """
         Returns the encoded data of the leaf node, containing its type, and the
         key/value pairs. These values will eventually be the offsets of the 
@@ -258,6 +262,13 @@ class Leaf(Mapping, BaseNode):
         Returns the value that corresponds with the key, if the key is not 
         present, None is returned.
         """
+
+        # If values are not offsets of documents, but the document itself, this
+        # should be uncommented:
+        # if key in self.bucket:
+            # return self.bucket[key]
+        # return None
+
         if key in self.bucket:
             offset = self.bucket[key]
             f = open("data", "br")
@@ -293,12 +304,13 @@ class Leaf(Mapping, BaseNode):
 class LazyNode(object):
     _init = False
 
-    def __init__(self, offset=None, node=None):
+    def __init__(self, offset=None, node=None, tree=None):
         """
         Sets up a proxy wrapper for a node at a certain disk offset.
         """
         self.offset = offset
         self.node = node
+        self.tree = tree
         self._init = True
 
     @property
@@ -318,7 +330,7 @@ class LazyNode(object):
         if not self.changed:
             return self.offset
 
-        data = self.node._get_data()
+        data = self.node._get_data(filename)
         f = open(filename, "ba")
         offset = f.tell()
         f.write(data)
@@ -353,24 +365,24 @@ class LazyNode(object):
         print(node_dict)
 
         if node_dict[b"type"] == b"Node":
-            new_node = Tree._create_node(tree=self)
+            new_node = Node(tree=self.tree)
             entries = node_dict[b"entries"]
             print(entries)
 
             for (key, value) in entries.items():
-                new_node.bucket[key] = LazyNode(offset=value)
+                new_node.bucket[key] = LazyNode(offset=value, tree=self.tree)
 
             if b"rest" in node_dict:
-                new_node.rest = LazyNode(offset=node_dict[b"rest"])
+                new_node.rest = LazyNode(offset=node_dict[b"rest"], tree=self.tree)
 
             return new_node
 
         if node_dict[b"type"] == b"Leaf":
-            new_leaf = Tree._create_leaf(tree=self)
+            new_leaf = Leaf(tree=self.tree)
             entries = node_dict[b"entries"]
 
             for (key, value) in entries.items():
-                new_leaf.bucket[key] = value #LazyNode(offset=value)
+                new_leaf.bucket[key] = value
 
             return new_leaf
 
@@ -400,7 +412,7 @@ class LazyNode(object):
 
 
 def create_initial_tree(): 
-    tree = Tree()
+    tree = Tree(max_size=4)
     for i in range(0, 15):
         tree.__setitem__(randint(0,2000), "value")
 
@@ -453,7 +465,7 @@ def write_document(tofile, data):
 
 
 def insert_document():
-    tree = Tree()
+    tree = Tree(max_size=4)
 
     doc_offset = write_document("data", "Dit is een test document")
     key = "Testkey"
@@ -465,7 +477,7 @@ def insert_document():
 def compaction(tree):
     doc_keys = tree._get_documents()
 
-    new_tree = Tree()
+    new_tree = Tree(max_size=tree.max_size)
     for key in doc_keys:
         document_data = tree.__getitem__(key)
 
@@ -481,7 +493,16 @@ def compaction(tree):
     os.rename("newdata", "data")
 
 
+# Load the tree if there is one stored on disk, else create a new one.
+def start_up(max_size):
+    footer = get_last_footer()
+    if footer == None:
+        print("No existing tree was found. Creating a new one..")
+        return Tree(max_size=max_size)
 
+    tree = Tree(max_size=footer[b"max_size"])
+    tree.root = LazyNode(offset=footer[b"root_offset"], tree=tree)
+    return tree
 
 
 
@@ -492,18 +513,17 @@ def main():
     # Load the tree from disk and perform some tests, like inserting a new key
     # or retrieving a key.
 
-    # insert_document()
+    tree = start_up(max_size=4)
+    
 
-    footer = get_last_footer()
-    if footer == None:
-        print("No footer was found, terminating program...")
-        return
-    
-    new_tree = Tree()
-    lazy_root = LazyNode( offset=footer[b"root_offset"])
-    new_tree.root = lazy_root
-    
-    print("all keys: ", str(new_tree._get_documents()))
+    tree[b"dockey"] = "testdoc" 
+    tree[b"foo"] = "this"
+    tree[b"bar"] = "is"
+    tree[b"what"] = "for"
+    tree[b"up"] = "testing"
+
+    print("all keys: ", str(tree._get_documents()))
+    tree._commit("data")
 
     # compaction(new_tree)
     # print("Get document: ", str(new_tree.__getitem__(b"Testkey")))
@@ -513,11 +533,6 @@ def main():
     # new_tree.__setitem__(666, "insert_test")
     # new_tree._commit()
 
-    # value = new_tree.__getitem__(666)
-    # if value != None: 
-    #     print("Found newly added test key:", str(value))
-    # else:
-    #     print("Key:",str(666), "not found")
 
 
 
