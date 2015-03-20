@@ -25,14 +25,14 @@ class DocumentsHandler(RequestHandler):
             self.json_args = None
 
     def get(self):
-        # self.write("All documents:</br>")
-        
-        # for doc in self.db._get_documents():
-        #     self.write('<a href="%s">link to document: %s</a></br>' % 
-        #         (self.reverse_url("document", doc), doc))
+        request_header = self.request.headers.get('User-Agent')
 
-        # self.write('<br><a href="/insertDoc/">Click here to insert a document.</a>')
-        self.render("doc_list.html", title="All Documents", items=self.db._get_documents())
+        # plain object with curl
+        if request_header.startswith('curl/'):
+            self.write(dict(self.db))
+        # render html in browser
+        else:
+            self.render("doc_list.html", title="All Documents", items=self.db._get_documents())
 
     def post(self):
         if self.json_args != None:
@@ -57,7 +57,14 @@ class DocumentHandler(RequestHandler):
         self.db = db
 
     def get(self, doc_key):
-        self.write("Content of document " + str(doc_key) + " :<br>" + str(self.db[doc_key]))
+        request_header = self.request.headers.get('User-Agent')
+
+        # plain object with curl
+        if request_header.startswith('curl/'):
+            self.write({doc_key : self.db[doc_key]})
+        # render html in browser
+        else:
+            self.write("Content of document " + str(doc_key) + " :<br>" + str(self.db[doc_key]))
 
 
 class InsertDocHandler(RequestHandler):
