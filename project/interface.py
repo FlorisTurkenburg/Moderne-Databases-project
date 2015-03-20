@@ -1,5 +1,6 @@
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, RedirectHandler
+from tornado.escape import json_decode
 import btree
 
 
@@ -27,12 +28,12 @@ class DocumentsHandler(RequestHandler):
         self.render("doc_list.html", title="All Documents", items=self.db._get_documents())
 
     def post(self):
-        self.set_header("Content-Type", "text/plain")
         key = self.get_body_argument("docKey")
         value = self.get_body_argument("docContent")
         self.db[key] = value
         self.db._commit("data")
 
+        self.set_header("Content-Type", "text/plain")
         message = "You inserted key=" + repr(key) + " with value=" + repr(value) + " into the database."
         self.write('alert("%s")' % message)
 
@@ -67,10 +68,9 @@ def make_app():
     tree = btree.start_up(4)
     return Application([
         url(r"/", MainHandler),
-        url(r"/documents", RedirectHandler, dict(url=r"/documents/") ),
-        url(r"/documents/", DocumentsHandler, dict(db=tree), name="documents"),
+        url(r"/documents/?", DocumentsHandler, dict(db=tree), name="documents"),
         url(r"/document/([a-zA-Z0-9_]+)", DocumentHandler, dict(db=tree), name="document"),
-        url(r"/insertDoc/", InsertDocHandler, dict(db=tree), name="insertdocument")
+        url(r"/insertDoc/?", InsertDocHandler, dict(db=tree), name="insertdocument")
     ])
 
 def main():
@@ -80,3 +80,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# curl -X POST localhost:8888/documents/ -H "Content-Type:application/json" -d '{"docKey":"jsontest", "docContent":"This is the content of a document inserted with json"}'
