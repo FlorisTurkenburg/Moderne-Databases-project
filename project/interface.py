@@ -19,10 +19,11 @@ class DocumentsHandler(RequestHandler):
         self.db = db
 
     def prepare(self):
-        if self.request.headers["Content-Type"].startswith("application/json"):
-            self.json_args = json.loads(self.request.body.decode("utf-8"))
-        else:
-            self.json_args = None
+        if "Content-Type" in self.request.headers:
+            if self.request.headers["Content-Type"].startswith("application/json"):
+                self.json_args = json.loads(self.request.body.decode("utf-8"))
+            else:
+                self.json_args = None
 
     def get(self):
         request_header = self.request.headers.get('User-Agent')
