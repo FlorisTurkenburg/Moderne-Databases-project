@@ -93,6 +93,27 @@ class Tree(MutableMapping):
         return self.root._get_documents()
 
 
+    def compaction(self):
+        doc_keys = self._get_documents()
+
+        new_tree = Tree(filename="newdata", max_size=self.max_size)
+        for key in doc_keys:
+            document_data = self.__getitem__(key)
+
+            # newfile = open(new_tree.filename, "ba")
+            # write_offset = newfile.tell()
+            # newfile.write(add_integrity(encode(document_data)))
+            # newfile.close()
+
+            # new_tree.__setitem__(key, write_offset)
+            new_tree.__setitem__(key, document_data)
+
+        new_tree._commit()
+
+        os.rename("newdata", self.filename)
+
+
+
     def __delitem__(self, key):
         pass
 
@@ -279,6 +300,7 @@ class Leaf(Mapping, BaseNode):
                 data = f.read(i)
                 try: 
                     doc_data = decode(check_integrity(data))
+                    print(doc_data)
                     break
                 except:
                     i += 1
@@ -332,7 +354,7 @@ class LazyNode(object):
             return self.offset
 
         data = self.node._get_data()
-        f = open(self.tree.filename, "ba")
+        f = open(self.node.tree.filename, "ba")
         offset = f.tell()
         f.write(data)
         print("Data written: " + str(data))
@@ -481,23 +503,6 @@ def insert_document():
 
 
 
-def compaction(tree):
-    doc_keys = tree._get_documents()
-
-    new_tree = Tree(filename="newdata", max_size=tree.max_size)
-    for key in doc_keys:
-        document_data = tree.__getitem__(key)
-
-        newfile = open(new_tree.filename, "ba")
-        write_offset = newfile.tell()
-        newfile.write(add_integrity(encode(document_data)))
-        newfile.close()
-
-        new_tree.__setitem__(key, write_offset)
-
-    new_tree._commit()
-
-    os.rename("newdata", tree.filename)
 
 
 # Load the tree if there is one stored on disk, else create a new one.

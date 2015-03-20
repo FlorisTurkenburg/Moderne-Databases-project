@@ -96,13 +96,21 @@ class InsertDocHandler(RequestHandler):
                     '</form></body></html>')
 
     
+class CompactionHandler(RequestHandler):
+    def initialize(self, db):
+        self.db = db
 
+    def get(self):
+        self.db.compaction()
+        self.write('Database is compacted')
+        self.write('<a href="/documents/">Click here to go back to the document list</a>')
 
 
 def make_app():
     tree = btree.start_up(filename="data", max_size=4)
     return Application([
         url(r"/", RedirectHandler, dict(url=r"/documents/")),
+        url(r"/compact/?", CompactionHandler, dict(db=tree), name="compaction"),
         url(r"/documents/?", DocumentsHandler, dict(db=tree), name="documents"),
         url(r"/document/([a-zA-Z0-9_]+)", DocumentHandler, dict(db=tree), name="document"),
         url(r"/insertDoc/?", InsertDocHandler, dict(db=tree), name="insertdocument")
