@@ -1,6 +1,7 @@
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, RedirectHandler
 from tornado.escape import json_decode
+import json
 import btree
 
 
@@ -17,6 +18,12 @@ class DocumentsHandler(RequestHandler):
     def initialize(self, db):
         self.db = db
 
+    def prepare(self):
+        if self.request.headers["Content-Type"].startswith("application/json"):
+            self.json_args = json.loads(self.request.body.decode("utf-8"))
+        else:
+            self.json_args = None
+
     def get(self):
         # self.write("All documents:</br>")
         
@@ -28,8 +35,14 @@ class DocumentsHandler(RequestHandler):
         self.render("doc_list.html", title="All Documents", items=self.db._get_documents())
 
     def post(self):
-        key = self.get_body_argument("docKey")
-        value = self.get_body_argument("docContent")
+        if self.json_args != None:
+            print(self.json_args)
+            key = self.json_args["docKey"]
+            value = self.json_args["docContent"]
+        else:
+            key = self.get_body_argument("docKey")
+            value = self.get_body_argument("docContent")
+        
         self.db[key] = value
         self.db._commit("data")
 
@@ -82,3 +95,4 @@ if __name__ == '__main__':
     main()
 
 # curl -X POST localhost:8888/documents/ -H "Content-Type:application/json" -d '{"docKey":"jsontest", "docContent":"This is the content of a document inserted with json"}'
+# curl -X POST localhost:8888/documents/ -d 'docKey=curltest&docContent=somecurlcontent'
