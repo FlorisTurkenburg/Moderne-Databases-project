@@ -57,6 +57,13 @@ class DocumentHandler(RequestHandler):
     def initialize(self, db):
         self.db = db
 
+    def prepare(self):
+        if "Content-Type" in self.request.headers:
+            if self.request.headers["Content-Type"].startswith("application/json"):
+                self.json_args = json.loads(self.request.body.decode("utf-8"))
+            else:
+                self.json_args = None
+
     def get(self, doc_key):
         request_header = self.request.headers.get('User-Agent')
 
@@ -68,8 +75,12 @@ class DocumentHandler(RequestHandler):
             self.write("Content of document " + str(doc_key) + " :<br>" + str(self.db[doc_key]))
 
     def put(self, doc_key):
-        if doc_key in self.db:
-            self.db[doc_key] = json_args
+        if self.db[doc_key] != None:
+            print('found key ', doc_key)
+            self.db[doc_key] = self.json_args["docContent"]
+            self.db._commit("data")
+        else:
+            self.write('Document key not present in database')
 
 class InsertDocHandler(RequestHandler):
     def initialize(self, db):
