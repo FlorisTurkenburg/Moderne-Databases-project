@@ -102,7 +102,7 @@ class InsertDocHandler(RequestHandler):
 def make_app():
     tree = btree.start_up(filename="data", max_size=4)
     return Application([
-        url(r"/", MainHandler),
+        url(r"/", RedirectHandler, dict(url=r"/documents/")),
         url(r"/documents/?", DocumentsHandler, dict(db=tree), name="documents"),
         url(r"/document/([a-zA-Z0-9_]+)", DocumentHandler, dict(db=tree), name="document"),
         url(r"/insertDoc/?", InsertDocHandler, dict(db=tree), name="insertdocument")
