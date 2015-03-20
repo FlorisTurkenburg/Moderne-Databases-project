@@ -96,9 +96,8 @@ class Tree(MutableMapping):
         pass
 
     def __iter__(self):
-        return self.root.__iter__()
-
-        pass
+        for key in self.root:
+            yield key
 
     def __len__(self):
         pass
@@ -239,11 +238,12 @@ class Node(BaseNode):
         return selected_node.__getitem__(key)
 
     def __iter__(self):
-        children_keys = []
-        for child in self.bucket.values():
-            children_keys.append(child.__iter__())
+        for key in self.rest:
+            yield key
 
-        return children_keys
+        for child in self.bucket.values():
+            for key in child:
+                yield key
 
 
     def _get_documents(self):
@@ -289,8 +289,8 @@ class Leaf(Mapping, BaseNode):
             
 
     def __iter__(self):
-        # return self.bucket.keys()
-        return iter(self.bucket)
+        for key in self.bucket:
+            yield key
 
 
     def __len__(self):
@@ -409,6 +409,12 @@ class LazyNode(object):
             return super().__setattr__(name, value)
 
         setattr(self.node, name, value)
+
+    def __iter__(self):
+        if self.node is None:
+            self._load()
+
+        yield from self.node.__iter__()
 
 
 def create_initial_tree(): 
