@@ -66,6 +66,9 @@ class DocumentHandler(RequestHandler):
         else:
             self.write("Content of document " + str(doc_key) + " :<br>" + str(self.db[doc_key]))
 
+    def put(self, doc_key):
+        if doc_key in self.db:
+            self.db[doc_key] = json_args
 
 class InsertDocHandler(RequestHandler):
     def initialize(self, db):
