@@ -45,7 +45,7 @@ class DocumentsHandler(RequestHandler):
             value = self.get_body_argument("docContent")
         
         self.db[key] = value
-        self.db._commit("data")
+        self.db._commit()
 
         self.set_header("Content-Type", "text/plain")
         message = "You inserted key=" + repr(key) + " with value=" + repr(value) + " into the database."
@@ -78,7 +78,7 @@ class DocumentHandler(RequestHandler):
         if self.db[doc_key] != None:
             print('found key ', doc_key)
             self.db[doc_key] = self.json_args["docContent"]
-            self.db._commit("data")
+            self.db._commit()
         else:
             self.write('Document key not present in database')
 
@@ -100,7 +100,7 @@ class InsertDocHandler(RequestHandler):
 
 
 def make_app():
-    tree = btree.start_up(4)
+    tree = btree.start_up(filename="data", max_size=4)
     return Application([
         url(r"/", MainHandler),
         url(r"/documents/?", DocumentsHandler, dict(db=tree), name="documents"),
