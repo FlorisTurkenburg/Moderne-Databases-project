@@ -412,7 +412,7 @@ class LazyNode(object):
 
     def __iter__(self):
         if self.node is None:
-            self._load()
+            self.node = self._load()
 
         yield from self.node.__iter__()
 
