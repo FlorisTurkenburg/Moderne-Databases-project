@@ -51,7 +51,7 @@ class DocumentsHandler(RequestHandler):
 
         self.set_header("Content-Type", "text/plain")
         message = "You inserted key=" + repr(key) + " with value=" + repr(value) + " into the database."
-        self.write('alert("%s")' % message)
+        self.write(message)
 
 
 
@@ -107,11 +107,56 @@ class CompactionHandler(RequestHandler):
         self.write('Database is compacted')
         self.write('<a href="/documents/">Click here to go back to the document list</a>')
 
+
 # global temp_tree
 class MapReduce(RequestHandler):
     def initialize(self, db):
         self.db = db
 
+    def prepare(self):
+        if "Content-Type" in self.request.headers:
+            if self.request.headers["Content-Type"].startswith("application/json"):
+                self.json_args = json.loads(self.request.body.decode("utf-8"))
+            else:
+                self.json_args = None
+
+    def post(self):
+        script = astevalscript.Script()
+        script.symtable["emit"] = emit
+        
+        # Load the user defined map and reduce functions
+        if self.json_args != None:
+            if "mapreduce" in self.json_args:
+                script.add_file(self.json_args["mapreduce"])
+            else:
+                script.add_file(self.json_args["map"])
+                script.add_file(self.json_args["reduce"])
+        else:
+            script.add_file("map.py")
+            script.add_file("reduce.py")
+            
+
+        f = open("temp_map_store", "w")
+        f.close()
+        global temp_tree
+        temp_tree = btree.start_up(filename="temp_map_store", max_size=4)
+        # document_store = btree.start_up(filename="data", max_size=4)
+
+        for key in self.db._get_documents():
+            script.invoke("map", doc_key=key, doc_value=self.db[key])
+
+        temp_tree._commit()
+
+        self.write('The result of the MapReduce is:<br>')
+        for key in temp_tree._get_documents():
+            
+            red_value = script.invoke("reduce", key=key, value=temp_tree[key])
+            print(red_value)
+            self.write(str(red_value) + '<br>')
+
+
+        # delete the temporary document store
+        os.remove("temp_map_store")
 
 
     def get(self):
@@ -171,5 +216,8 @@ def main():
 if __name__ == '__main__':
     main()
 
+
+# curl -X POST localhost:8888/mapreduce/ -H "Content-Type:application/json" -d '{"mapreduce":"mapAndReduce.py"}'
+# curl -X POST localhost:8888/mapreduce/ -H "Content-Type:application/json" -d '{"map":"map.py", "reduce":"reduce.py"}'
 # curl -X POST localhost:8888/documents/ -H "Content-Type:application/json" -d '{"docKey":"jsontest", "docContent":"This is the content of a document inserted with json"}'
 # curl -X POST localhost:8888/documents/ -d 'docKey=curltest&docContent=somecurlcontent'

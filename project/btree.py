@@ -113,6 +113,7 @@ class Tree(MutableMapping):
 
 
 
+
     def __delitem__(self, key):
         pass
 
@@ -487,8 +488,7 @@ def get_last_footer(filename):
             i += 1
 
     
-    print(footer)
-    print(footer[b"root_offset"])
+    print("Footer: " + str(footer))
     return footer
     
 def write_document(tofile, data):
