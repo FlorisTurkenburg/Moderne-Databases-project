@@ -3,6 +3,8 @@ from tornado.web import RequestHandler, Application, url, RedirectHandler
 from tornado.escape import json_decode
 import json
 import btree
+import astevalscript
+import os
 
 
 class HelloHandler(RequestHandler):
@@ -105,6 +107,50 @@ class CompactionHandler(RequestHandler):
         self.write('Database is compacted')
         self.write('<a href="/documents/">Click here to go back to the document list</a>')
 
+# global temp_tree
+class MapReduce(RequestHandler):
+    def initialize(self, db):
+        self.db = db
+
+
+
+    def get(self):
+        script = astevalscript.Script()
+        script.symtable["emit"] = emit
+        # The user defined map and reduce functions
+        script.add_file("map.py")
+        script.add_file("reduce.py")
+
+        f = open("temp_map_store", "w")
+        f.close()
+        global temp_tree
+        temp_tree = btree.start_up(filename="temp_map_store", max_size=4)
+        # document_store = btree.start_up(filename="data", max_size=4)
+
+        for key in self.db._get_documents():
+            script.invoke("map", doc_key=key, doc_value=self.db[key])
+
+        temp_tree._commit()
+
+        self.write('The result of the MapReduce is:<br>')
+        for key in temp_tree._get_documents():
+            
+            red_value = script.invoke("reduce", key=key, value=temp_tree[key])
+            print(red_value)
+            self.write(str(red_value) + '<br>')
+
+
+        # delete the temporary document store
+        os.remove("temp_map_store")
+
+
+def emit(key, value):
+    if temp_tree[key] != None:
+        temp_tree[key] = temp_tree[key] + [value]
+
+    else:
+        temp_tree[key] = [value]
+
 
 def make_app():
     tree = btree.start_up(filename="data", max_size=4)
@@ -113,7 +159,8 @@ def make_app():
         url(r"/compact/?", CompactionHandler, dict(db=tree), name="compaction"),
         url(r"/documents/?", DocumentsHandler, dict(db=tree), name="documents"),
         url(r"/document/([a-zA-Z0-9_]+)", DocumentHandler, dict(db=tree), name="document"),
-        url(r"/insertDoc/?", InsertDocHandler, dict(db=tree), name="insertdocument")
+        url(r"/insertDoc/?", InsertDocHandler, dict(db=tree), name="insertdocument"),
+        url(r"/mapreduce/?", MapReduce, dict(db=tree), name="MapReduce")
     ])
 
 def main():

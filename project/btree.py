@@ -455,7 +455,14 @@ class LazyNode(object):
 # footer is not decodeable (incomplete data, could occur when a write to the
 # file was not succesfully finished)
 def get_last_footer(filename):
-    f = open(filename, "br")
+    try:
+        f = open(filename, "br")
+    except FileNotFoundError:
+        print("File was not found, using a new file with name: " + filename)
+        f = open(filename, "w")
+        f.close()
+        return None
+
     i = 0
     read_till = 0
 
@@ -464,6 +471,7 @@ def get_last_footer(filename):
             f.seek(-i,2)
         except OSError:
             print("Could not retrieve footer, file is incorrect")
+            f.close()
             return None
         
         data = f.read(i-read_till)
@@ -499,7 +507,7 @@ def start_up(filename, max_size):
     footer = get_last_footer(filename)
     if footer == None:
         print("No existing tree was found. Creating a new one..")
-        return Tree(max_size=max_size)
+        return Tree(filename=filename, max_size=max_size)
 
     tree = Tree(filename=filename, max_size=footer[b"max_size"])
     tree.root = LazyNode(offset=footer[b"root_offset"], tree=tree)
