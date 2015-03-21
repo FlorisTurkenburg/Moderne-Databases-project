@@ -31,6 +31,12 @@ class Script(object):
         with open(path, 'rb') as f:
             self.interpreter(f.read())
 
+    def add_string(self, string):
+        """
+        Adds and loads code from a string.
+        """
+        self.interpreter(string)
+
     def invoke(self, name, *args, **kwargs):
 
         """

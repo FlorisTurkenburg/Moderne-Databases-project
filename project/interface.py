@@ -132,8 +132,12 @@ class MapReduce(RequestHandler):
                 script.add_file(self.json_args["map"])
                 script.add_file(self.json_args["reduce"])
         else:
-            script.add_file("map.py")
-            script.add_file("reduce.py")
+            script.add_string(self.get_body_argument("map"))
+            script.add_string(self.get_body_argument("reduce"))
+
+        # else:
+        #     script.add_file("map.py")
+        #     script.add_file("reduce.py")
             
 
         f = open("temp_map_store", "w")
@@ -143,14 +147,23 @@ class MapReduce(RequestHandler):
         # document_store = btree.start_up(filename="data", max_size=4)
 
         for key in self.db._get_documents():
-            script.invoke("map", doc_key=key, doc_value=self.db[key])
+            try:
+                script.invoke("map", doc_key=key, doc_value=self.db[key])
+            except:
+                self.write('Map function is incorrect!!')
+                os.remove("temp_map_store")
+                return
 
         temp_tree._commit()
 
         self.write('The result of the MapReduce is:<br>')
         for key in temp_tree._get_documents():
-            
-            red_value = script.invoke("reduce", key=key, value=temp_tree[key])
+            try:
+                red_value = script.invoke("reduce", key=key, value=temp_tree[key])
+            except:
+                self.write('Reduce function is incorrect!!')
+                break
+
             print(red_value)
             self.write(str(red_value) + '<br>')
 
@@ -160,33 +173,17 @@ class MapReduce(RequestHandler):
 
 
     def get(self):
-        script = astevalscript.Script()
-        script.symtable["emit"] = emit
-        # The user defined map and reduce functions
-        script.add_file("map.py")
-        script.add_file("reduce.py")
 
-        f = open("temp_map_store", "w")
-        f.close()
-        global temp_tree
-        temp_tree = btree.start_up(filename="temp_map_store", max_size=4)
-        # document_store = btree.start_up(filename="data", max_size=4)
+        self.write('<html><body><form id="mapred" action="/mapreduce/" method="POST">'
+                    'Map:<br>'
+                    # '<input type="text" name="map" required><br>'
+                    '<textarea name="map" form="mapred" cols="80" rows="20" required></textarea><br>'
+                    'Reduce:<br>'
+                    # '<input type="text" name="reduce" required><br>'
+                    '<textarea name="reduce" form="mapred" cols="80" rows="20" required></textarea><br>'
+                    '<input type="submit" value="Run MapReduce">'
+                    '</form></body></html>')
 
-        for key in self.db._get_documents():
-            script.invoke("map", doc_key=key, doc_value=self.db[key])
-
-        temp_tree._commit()
-
-        self.write('The result of the MapReduce is:<br>')
-        for key in temp_tree._get_documents():
-            
-            red_value = script.invoke("reduce", key=key, value=temp_tree[key])
-            print(red_value)
-            self.write(str(red_value) + '<br>')
-
-
-        # delete the temporary document store
-        os.remove("temp_map_store")
 
 
 def emit(key, value):
