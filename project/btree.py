@@ -17,7 +17,6 @@ from sortedcontainers import SortedDict
 from encode import encode, decode
 from checksum import add_integrity, check_integrity
 
-max_node_size = 4
 
 class Tree(MutableMapping):
     def __init__(self, filename="data", max_size=1024):
@@ -122,7 +121,7 @@ class Tree(MutableMapping):
             yield key
 
     def __len__(self):
-        pass
+        return len(self.root)
 
 class BaseNode(object):
     def __init__(self, tree):
@@ -267,6 +266,8 @@ class Node(BaseNode):
             for key in child:
                 yield key
 
+    def __len__(self):
+        return sum([len(child) for child in self.bucket.values()])+len(self.rest)
 
     def _get_documents(self):
         doc_list = []
@@ -305,8 +306,10 @@ class Leaf(Mapping, BaseNode):
                 except:
                     i += 1
             f.close()
-
-            return doc_data.decode("utf-8")
+            if type(doc_data) is bytes:
+                return doc_data.decode("utf-8")
+            else:
+                return doc_data
 
         pass
             
@@ -366,7 +369,7 @@ class LazyNode(object):
         return offset
 
 
-    # IT'S FREAKING WORKING
+    
     def _load(self):
         """
         Load the node from disk.
@@ -434,20 +437,16 @@ class LazyNode(object):
         setattr(self.node, name, value)
 
     def __iter__(self):
-        if self.node is None:
+        if self.node == None:
             self.node = self._load()
 
         yield from self.node.__iter__()
 
+    def __len__(self):
+        if self.node == None:
+            self.node = self._load()
 
-def create_initial_tree(): 
-    tree = Tree(filenam="testfile", max_size=4)
-    for i in range(0, 15):
-        tree.__setitem__(randint(0,2000), "value")
-
-    tree.__setitem__(30, "test")
-    # print(str(tree.__getitem__(30)))
-    tree._commit()
+        return len(self.node)
     
     
 
@@ -493,16 +492,6 @@ def write_document(tofile, data):
     return offset
 
 
-def insert_document():
-    tree = Tree(filename="data", max_size=4)
-
-    doc_offset = write_document(tree.filename, "Dit is een test document")
-    key = "Testkey"
-    tree.__setitem__(key, doc_offset)
-    tree._commit()
-
-
-
 
 
 # Load the tree if there is one stored on disk, else create a new one.
@@ -519,8 +508,6 @@ def start_up(filename, max_size):
 
 
 def main():
-    # Create a new tree if needed:
-    # create_initial_tree()
     
     # Load the tree from disk and perform some tests, like inserting a new key
     # or retrieving a key.
@@ -537,13 +524,8 @@ def main():
     print("all keys: ", str(tree._get_documents()))
     tree._commit()
 
-    # compaction(new_tree)
-    # print("Get document: ", str(new_tree.__getitem__(b"Testkey")))
-
-    # print("Value of key", repr("30"),"is:", str(new_tree.__getitem__(30)))
-    
-    # new_tree.__setitem__(666, "insert_test")
-    # new_tree._commit()
+    # compaction(tree)
+    # print("Get document: ", str(tree.__getitem__(b"Testkey")))
 
 
 
