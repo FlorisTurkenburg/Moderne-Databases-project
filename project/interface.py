@@ -101,7 +101,7 @@ class CompactionHandler(RequestHandler):
 
     def get(self):
         self.db.compaction()
-        self.write('Database is compacted')
+        self.write('Database is compacted<br>')
         self.write('<a href="/documents/">Click here to go back to the document list</a>')
 
 
@@ -155,12 +155,12 @@ class MapReduce(RequestHandler):
         f = open("temp_map_store", "w")
         f.close()
         global temp_tree
-        temp_tree = btree.start_up(filename="temp_map_store", max_size=4)
+        temp_tree = btree.start_up(filename="temp_map_store", max_size=100)
         # document_store = btree.start_up(filename="data", max_size=4)
 
         for key in self.db:
             try:
-                script.invoke("map", doc_key=key, doc_value=self.db[key])
+                script.invoke("map", key, self.db[key])
             except:
                 self.write('Map function is incorrect!!')
                 os.remove("temp_map_store")
@@ -171,7 +171,7 @@ class MapReduce(RequestHandler):
         self.write('The result of the MapReduce is:<br>')
         for key in temp_tree:
             try:
-                red_value = script.invoke("reduce", key=key, value=temp_tree[key])
+                red_value = script.invoke("reduce", key, temp_tree[key])
             except:
                 self.write('Reduce function is incorrect!!')
                 os.remove("temp_map_store")
@@ -208,7 +208,7 @@ def emit(key, value):
 
 
 def make_app():
-    tree = btree.start_up(filename="data", max_size=4)
+    tree = btree.start_up(filename="nvd_database", max_size=100)
     return Application([
         url(r"/", RedirectHandler, dict(url=r"/documents/")),
         url(r"/compact/?", CompactionHandler, dict(db=tree), name="compaction"),

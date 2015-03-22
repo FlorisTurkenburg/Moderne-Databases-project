@@ -40,11 +40,11 @@ class Tree(MutableMapping):
         # Delete the lowest key from the right child and put the corresponding
         # value into its rest. This should not happen for leaf nodes, as they do
         # not have a rest.
-        print(type(rhs.node))
+        # print(type(rhs.node))
         if hasattr(rhs, "rest"):
             rhs.node.rest = rhs.bucket[min(rhs.bucket)]
             rhs.node.bucket.pop(min(rhs.bucket))
-            print("Rest is: " + str(rhs.rest))
+            # print("Rest is: " + str(rhs.rest))
         root.changed = True
         
         return LazyNode(node=root, tree=self)
@@ -53,7 +53,7 @@ class Tree(MutableMapping):
         """
         Get the value corresonding with the key.
         """
-        print("Searching for key: " + str(key))
+        # print("Searching for key: " + str(key))
         return self.root.__getitem__(key)
 
 
@@ -73,7 +73,7 @@ class Tree(MutableMapping):
             root_split.node.changed = True
             new_root = self._create_root(self.root, root_split)
             self.root = new_root
-            print("Created new root")
+            # print("Created new root")
 
         pass
 
@@ -143,7 +143,7 @@ class BaseNode(object):
             key, value = self.bucket.popitem()
             other.bucket[key] = value
 
-        print("New node created: " + str(other))
+        # print("New node created: " + str(other))
         return LazyNode(node=other, tree=self.tree)
 
     def _insert(self, key, value):
@@ -154,7 +154,7 @@ class BaseNode(object):
 
         self.bucket[key] = value
         self.changed = True
-        print(str(key)+" inserted into: " + str(self.bucket))
+        # print(str(key)+" inserted into: " + str(self.bucket))
         if len(self.bucket) > self.tree.max_size:
             new_node = self._split()
             new_node.node.changed = True
@@ -169,10 +169,10 @@ class BaseNode(object):
         documents.
         """
 
-        print("Leaf committed: " + str(self) + " bucketsize: " + 
-            str(len(self.bucket)))
+        # print("Leaf committed: " + str(self) + " bucketsize: " + 
+        #     str(len(self.bucket)))
         data = {"type":"Leaf", "entries":self.bucket}
-        print("Leaf data: "+ str(data))
+        # print("Leaf data: "+ str(data))
         return(add_integrity(encode(data)))
 
 
@@ -213,8 +213,8 @@ class Node(BaseNode):
         """
 
         selected_node = self._select(key)
-        print("Node selected: " + str(selected_node.bucket) + "\n of type: "+ 
-            str(type(selected_node)))
+        # print("Node selected: " + str(selected_node.bucket) + "\n of type: "+ 
+        #     str(type(selected_node)))
         split_node = selected_node._insert(key, value)
         self.changed = True
         if split_node != None:
@@ -237,16 +237,16 @@ class Node(BaseNode):
 
         if self.rest != None:
             rest_data = self.rest._commit()
-            print("Node committed: " + str(self)+ " bucketsize: " + 
-                str(len(self.bucket)))
-            print("Node data: " + 
-                str({"type":"Node", "rest":rest_data, "entries":data}))
+            # print("Node committed: " + str(self)+ " bucketsize: " + 
+            #     str(len(self.bucket)))
+            # print("Node data: " + 
+            #     str({"type":"Node", "rest":rest_data, "entries":data}))
             return add_integrity(encode({"type":"Node", "rest":rest_data, 
                 "entries":data}))
 
-        print("Node committed: " + str(self)+ " bucketsize: " + 
-            str(len(self.bucket)))
-        print("Node data: "+ str({"type":"Node", "entries":data}))
+        # print("Node committed: " + str(self)+ " bucketsize: " + 
+        #     str(len(self.bucket)))
+        # print("Node data: "+ str({"type":"Node", "entries":data}))
         return add_integrity(encode({"type":"Node", "entries":data}))
 
 
@@ -260,8 +260,9 @@ class Node(BaseNode):
         return selected_node.__getitem__(key)
 
     def __iter__(self):
-        for key in self.rest:
-            yield key
+        if self.rest != None:
+            for key in self.rest:
+                yield key
 
         for child in self.bucket.values():
             for key in child:
@@ -302,7 +303,7 @@ class Leaf(Mapping, BaseNode):
                 data = f.read(i)
                 try: 
                     doc_data = decode(check_integrity(data))
-                    print(doc_data)
+                    # print(doc_data)
                     break
                 except:
                     i += 1
@@ -363,8 +364,8 @@ class LazyNode(object):
         f = open(self.node.tree.filename, "ba")
         offset = f.tell()
         f.write(data)
-        print("Data written: " + str(data))
-        print("Written at: " + str(offset))
+        # print("Data written: " + str(data))
+        # print("Written at: " + str(offset))
         f.close()
         self.offset = offset
 
@@ -390,13 +391,13 @@ class LazyNode(object):
                 i += 1
         f.close()
 
-        print("Load offset: " + str(self.offset))
-        print(node_dict)
+        # print("Load offset: " + str(self.offset))
+        # print(node_dict)
 
         if node_dict[b"type"] == b"Node":
             new_node = Node(tree=self.tree)
             entries = node_dict[b"entries"]
-            print(entries)
+            # print(entries)
 
             for (key, value) in entries.items():
                 new_node.bucket[key.decode("utf-8")] = LazyNode(offset=value, tree=self.tree)
@@ -480,7 +481,7 @@ def get_last_footer(filename):
         data = f.read(i-read_till)
         try: 
             footer = decode(check_integrity(data))
-            print(footer)
+            # print(footer)
             if b"root_offset" in footer:
                 break
             else:
@@ -496,7 +497,7 @@ def get_last_footer(filename):
 def write_document(tofile, data):
     f = open(tofile, "ba")
     offset = f.tell()
-    print("offset: ", str(offset))
+    # print("offset: ", str(offset))
     f.write(add_integrity(encode(data)))
     f.close()
     return offset
