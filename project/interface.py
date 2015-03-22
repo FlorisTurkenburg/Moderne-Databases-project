@@ -7,9 +7,6 @@ import astevalscript
 import os
 
 
-class HelloHandler(RequestHandler):
-    def get(self):
-        self.write("Hello, world")
 
 class MainHandler(RequestHandler):
     def get(self):
@@ -108,7 +105,7 @@ class CompactionHandler(RequestHandler):
         self.write('<a href="/documents/">Click here to go back to the document list</a>')
 
 
-# global temp_tree
+
 class MapReduce(RequestHandler):
     def initialize(self, db):
         self.db = db
@@ -126,14 +123,29 @@ class MapReduce(RequestHandler):
         
         # Load the user defined map and reduce functions
         if self.json_args != None:
+        
             if "mapreduce" in self.json_args:
                 script.add_file(self.json_args["mapreduce"])
             else:
                 script.add_file(self.json_args["map"])
                 script.add_file(self.json_args["reduce"])
-        else:
+            if len(script.interpreter.error) > 0:
+                self.write('Incorrect MapReduce file(s)')
+                self.write(str(script.interpreter.error[0].get_error()))
+                return
+        
+        else: 
             script.add_string(self.get_body_argument("map"))
+            if len(script.interpreter.error) > 0:           
+                self.write('Map function is incorrect!<br>')
+                self.write(str(script.interpreter.error[0].get_error()))
+                return
+            
             script.add_string(self.get_body_argument("reduce"))
+            if len(script.interpreter.error) > 0:
+                self.write('Reduce function is incorrect!<br>')
+                self.write(str(script.interpreter.error[0].get_error()))
+                return
 
         # else:
         #     script.add_file("map.py")
@@ -162,7 +174,8 @@ class MapReduce(RequestHandler):
                 red_value = script.invoke("reduce", key=key, value=temp_tree[key])
             except:
                 self.write('Reduce function is incorrect!!')
-                break
+                os.remove("temp_map_store")
+                return
 
             print(red_value)
             self.write(str(red_value) + '<br>')
