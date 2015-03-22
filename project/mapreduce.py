@@ -24,13 +24,13 @@ def main():
 
     document_store = btree.start_up(filename="data", max_size=4)
 
-    for key in document_store._get_documents():
+    for key in document_store:
         script.invoke("map", doc_key=key, doc_value=document_store[key])
 
     temp_tree._commit()
 
 
-    for key in temp_tree._get_documents():
+    for key in temp_tree:
         print(script.invoke("reduce", key=key, value=temp_tree[key]))
 
 

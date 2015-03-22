@@ -32,7 +32,7 @@ class DocumentsHandler(RequestHandler):
             self.write(dict(self.db))
         # render html in browser
         else:
-            self.render("doc_list.html", title="All Documents", items=self.db._get_documents())
+            self.render("doc_list.html", title="All Documents", items=[key for key in self.db])
 
     def post(self):
         if self.json_args != None:
@@ -121,7 +121,7 @@ class MapReduce(RequestHandler):
         script = astevalscript.Script()
         script.symtable["emit"] = emit
         
-        # Load the user defined map and reduce functions
+        # Load the user defined map and reduce functions from file
         if self.json_args != None:
         
             if "mapreduce" in self.json_args:
@@ -133,7 +133,7 @@ class MapReduce(RequestHandler):
                 self.write('Incorrect MapReduce file(s)')
                 self.write(str(script.interpreter.error[0].get_error()))
                 return
-        
+        # Load user defined map reduce from form
         else: 
             script.add_string(self.get_body_argument("map"))
             if len(script.interpreter.error) > 0:           
@@ -158,7 +158,7 @@ class MapReduce(RequestHandler):
         temp_tree = btree.start_up(filename="temp_map_store", max_size=4)
         # document_store = btree.start_up(filename="data", max_size=4)
 
-        for key in self.db._get_documents():
+        for key in self.db:
             try:
                 script.invoke("map", doc_key=key, doc_value=self.db[key])
             except:
@@ -169,7 +169,7 @@ class MapReduce(RequestHandler):
         temp_tree._commit()
 
         self.write('The result of the MapReduce is:<br>')
-        for key in temp_tree._get_documents():
+        for key in temp_tree:
             try:
                 red_value = script.invoke("reduce", key=key, value=temp_tree[key])
             except:

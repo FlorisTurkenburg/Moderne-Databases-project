@@ -88,15 +88,15 @@ class Tree(MutableMapping):
                                         "max_size":self.max_size})))
         f.close()
 
-    def _get_documents(self):
-        return self.root._get_documents()
+    # def _get_documents(self):
+    #     return self.root._get_documents()
 
 
     def compaction(self):
-        doc_keys = self._get_documents()
+        # doc_keys = self._get_documents()
 
         new_tree = Tree(filename="newdata", max_size=self.max_size)
-        for key in doc_keys:
+        for key in self:
             document_data = self.__getitem__(key)
 
             # newfile = open(new_tree.filename, "ba")
@@ -270,14 +270,14 @@ class Node(BaseNode):
     def __len__(self):
         return sum([len(child) for child in self.bucket.values()])+len(self.rest)
 
-    def _get_documents(self):
-        doc_list = []
-        if self.rest != None:
-            doc_list += self.rest._get_documents()
-        for node in self.bucket.values():
-            doc_list += node._get_documents()
+    # def _get_documents(self):
+    #     doc_list = []
+    #     if self.rest != None:
+    #         doc_list += self.rest._get_documents()
+    #     for node in self.bucket.values():
+    #         doc_list += node._get_documents()
 
-        return doc_list
+    #     return doc_list
 
 
 class Leaf(Mapping, BaseNode):
@@ -324,8 +324,8 @@ class Leaf(Mapping, BaseNode):
         return len(self.bucket)
 
 
-    def _get_documents(self):
-        return list(self.bucket.keys())
+    # def _get_documents(self):
+    #     return list(self.bucket.keys())
 
 
 class LazyNode(object):
@@ -523,14 +523,14 @@ def main():
     tree = start_up(filename="data", max_size=4)
     
 
-    tree["dockey"] = "testdoc" 
-    tree["foo"] = "this"
-    tree["bar"] = "is"
-    tree["what"] = "for"
-    tree["up"] = "testing"
+    # tree["dockey"] = "testdoc" 
+    # tree["foo"] = "this"
+    # tree["bar"] = "is"
+    # tree["what"] = "for"
+    # tree["up"] = "testing"
 
-    print("all keys: ", str(tree._get_documents()))
-    tree._commit()
+    print("all keys: ", str([key for key in tree]))
+    # tree._commit()
 
     # compaction(tree)
     # print("Get document: ", str(tree.__getitem__(b"Testkey")))
