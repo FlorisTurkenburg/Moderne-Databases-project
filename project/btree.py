@@ -509,7 +509,7 @@ def write_document(tofile, data):
 def start_up(filename, max_size):
     footer = get_last_footer(filename)
     if footer == None:
-        print("No existing tree was found. Creating a new one..")
+        print("No existing tree was found. A new one is created.")
         return Tree(filename=filename, max_size=max_size)
 
     tree = Tree(filename=filename, max_size=footer[b"max_size"])

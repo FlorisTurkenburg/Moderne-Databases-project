@@ -5,6 +5,7 @@ import json
 import btree
 import astevalscript
 import os
+from operator import itemgetter
 
 
 
@@ -130,7 +131,7 @@ class MapReduce(RequestHandler):
                 script.add_file(self.json_args["map"])
                 script.add_file(self.json_args["reduce"])
             if len(script.interpreter.error) > 0:
-                self.write('Incorrect MapReduce file(s)')
+                self.write('Incorrect MapReduce file(s)\n')
                 self.write(str(script.interpreter.error[0].get_error()))
                 return
         # Load user defined map reduce from form
@@ -147,13 +148,9 @@ class MapReduce(RequestHandler):
                 self.write(str(script.interpreter.error[0].get_error()))
                 return
 
-        # else:
-        #     script.add_file("map.py")
-        #     script.add_file("reduce.py")
+
             
 
-        f = open("temp_map_store", "w")
-        f.close()
         global temp_tree
         temp_tree = btree.start_up(filename="temp_map_store", max_size=100)
         # document_store = btree.start_up(filename="data", max_size=4)
@@ -168,17 +165,29 @@ class MapReduce(RequestHandler):
 
         temp_tree._commit()
 
-        self.write('The result of the MapReduce is:<br>')
+        reduce_result = []
+        if self.request.headers.get('User-Agent').startswith("curl/"):
+            self.write('The result of the MapReduce is:\n')
+        else:            
+            self.write('The result of the MapReduce is:<br>')
+        
+
         for key in temp_tree:
             try:
-                red_value = script.invoke("reduce", key, temp_tree[key])
+                red_key, red_value = script.invoke("reduce", key, temp_tree[key])
+                reduce_result.append((red_key, red_value))
             except:
                 self.write('Reduce function is incorrect!!')
                 os.remove("temp_map_store")
                 return
 
-            print(red_value)
-            self.write(str(red_value) + '<br>')
+        reduce_result.sort(key=itemgetter(1), reverse=True)
+        if self.request.headers.get('User-Agent').startswith("curl/"):
+            for item in reduce_result[:10]:
+                self.write(str(item) + "\n")
+        else:
+            for item in reduce_result[:10]:
+                self.write(str(item) + "<br>")
 
 
         # delete the temporary document store
@@ -189,10 +198,8 @@ class MapReduce(RequestHandler):
 
         self.write('<html><body><form id="mapred" action="/mapreduce/" method="POST">'
                     'Map:<br>'
-                    # '<input type="text" name="map" required><br>'
                     '<textarea name="map" form="mapred" cols="80" rows="20" required></textarea><br>'
                     'Reduce:<br>'
-                    # '<input type="text" name="reduce" required><br>'
                     '<textarea name="reduce" form="mapred" cols="80" rows="20" required></textarea><br>'
                     '<input type="submit" value="Run MapReduce">'
                     '</form></body></html>')

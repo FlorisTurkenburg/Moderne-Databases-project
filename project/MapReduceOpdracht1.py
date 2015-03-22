@@ -5,4 +5,4 @@ def map(key, value):
 
 
 def reduce(key, value):
-    return [key, sum(value)]
+    return key, sum(value)
