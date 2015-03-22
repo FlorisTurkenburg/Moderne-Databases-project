@@ -307,8 +307,10 @@ class Leaf(Mapping, BaseNode):
                 except:
                     i += 1
             f.close()
-            if type(doc_data) is bytes:
+            if type(doc_data) is bytes or type(doc_data) is bytearray:
                 return doc_data.decode("utf-8")
+            elif type(doc_data) is list:
+                return [item.decode("utf-8") if type(item) is bytes else item for item in doc_data]
             else:
                 return doc_data
 

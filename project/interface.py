@@ -213,7 +213,7 @@ def make_app():
         url(r"/", RedirectHandler, dict(url=r"/documents/")),
         url(r"/compact/?", CompactionHandler, dict(db=tree), name="compaction"),
         url(r"/documents/?", DocumentsHandler, dict(db=tree), name="documents"),
-        url(r"/document/([a-zA-Z0-9_]+)", DocumentHandler, dict(db=tree), name="document"),
+        url(r"/document/([a-zA-Z0-9_-]+)", DocumentHandler, dict(db=tree), name="document"),
         url(r"/insertDoc/?", InsertDocHandler, dict(db=tree), name="insertdocument"),
         url(r"/mapreduce/?", MapReduce, dict(db=tree), name="MapReduce")
     ])
