@@ -1,5 +1,6 @@
 import math
 from random import randint
+from collections import deque
 
 class Finger(object):
     def __init__(self, start, node):
@@ -25,6 +26,8 @@ class Node(object):
         self.fingers = [Finger((node_id + 2 ** k) % self.ring_size, self) for k
             in range(self.finger_count)]
 
+        self.successor_list = deque()
+
     def distance(self, lhs, rhs):
         return (self.ring_size + rhs - lhs) % self.ring_size
 
@@ -42,6 +45,13 @@ class Node(object):
     def join(self, node):
         self.predecessor = None
         self.successor = node.find_successor(self.node_id)
+        succ = self.successor
+        for i in range(5):
+            succ = succ.successor
+            if succ.is_alive:
+                self.successor_list.append(succ)
+            else:
+                break
 
         pass
 
@@ -52,6 +62,22 @@ class Node(object):
             self.successor = node
 
         self.successor.notify(self)
+
+        succ = self.successor
+        while not succ.is_alive:
+            try:
+                succ = self.successor_list.popleft()
+            except IndexError:
+                break
+
+        self.successor = succ
+        self.successor.notify(self)
+
+        if len(self.successor_list) == 0:
+            self.successor_list.append(self.successor.successor)
+
+        while len(self.successor_list) < 5:
+            self.successor_list.append(self.successor_list[-1].successor)    
 
         pass
 
