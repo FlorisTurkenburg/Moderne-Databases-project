@@ -63,9 +63,6 @@ class Node(object):
 
     def fix_fingers(self):
         i = randint(1, self.finger_count-1)
-        print("random index: " + str(i))
-        # print("Fingers: "+ str(self.fingers))
-        # for i in range(1,self.finger_count-1):
         self.fingers[i].node = self.find_successor(self.fingers[i].start)
 
         pass
@@ -81,8 +78,6 @@ class Node(object):
         while not self.in_range(node_id, pred.node_id+1, pred.successor.node_id+1):
             print(str(node_id), "not in range ("+ str(pred.node_id)+ ", "+str(pred.successor.node_id)+")")
             pred = pred.closest_preceding_node(node_id)
-            # print("while loop")
-            print("pred: " + str(pred))
 
         return pred
 
