@@ -2,6 +2,7 @@ from random import randint, sample
 from chord import Node
 
 node_ids = sample(range(Node.ring_size), 5)
+# node_ids = [9,6,1,8,3] #Debug
 node_failures = 2
 nodes = []
 
